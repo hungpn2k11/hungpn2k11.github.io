@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Ticket System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        /* Tab Styling */
+        .tab-active {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        /* Status Box Styling */
+        .status-valid { background-color: #10b981; color: white; transform: scale(1.05); }
+        .status-duplicate { background-color: #f59e0b; color: white; transform: scale(1.05); }
+        .status-invalid { background-color: #ef4444; color: white; transform: scale(1.05); }
+        .status-neutral { 
+            background-color: #e5e7eb; 
+            color: #4b5563; 
+        }
+        /* Modal & Camera Styling */
+        #confirmation-modal, #export-modal { transition: opacity 0.3s ease-in-out; }
+        .modal-content { transition: transform 0.3s ease-in-out; }
+        #reader {
+            border: 2px dashed #d1d5db;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        #reader video {
+            transform: scaleX(1);
+            transition: transform 0.2s;
+        }
+        #reader video.mirrored {
+            transform: scaleX(-1);
+        }
+        
+        /* Filter button styling */
+        .filter-btn-active {
+            background-color: #6366f1 !important;
+            color: white !important;
+        }
+        /* Loading Spinner */
+        #loading-overlay {
+            z-index: 50;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden relative">
+        <div id="loading-overlay" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
+            <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-4 text-gray-600 font-medium">Connecting to Real-time Database...</p>
+        </div>
+
+        <div id="db-error" class="hidden p-6 bg-red-100 text-red-900 rounded-lg m-4 border-2 border-red-300">
+            <div class="flex items-center">
+                <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <strong class="text-xl font-bold">Action Required: Database Permissions Error</strong>
+            </div>
+            <p class="mt-2">The app can't connect to your ticket data because the database security rules are blocking access. This is the most common setup issue when running this app with your own Firebase project.</p>
+            <p class="mt-3 font-semibold">To fix this, please follow these steps carefully:</p>
+            <ol class="list-decimal list-inside mt-2 space-y-2">
+                <li>Open your Firebase project and go to the <strong>Build > Realtime Database</strong> section.</li>
+                <li>Click on the <strong>Rules</strong> tab at the top.</li>
+                <li>Delete all the text in the rules editor and replace it with this exact code:</li>
+            </ol>
+            <pre class="bg-gray-800 text-white p-3 rounded-lg text-sm mt-2 overflow-x-auto"><code>{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null"
+  }
+}</code></pre>
+            <p class="mt-3">Click the <strong>Publish</strong> button to save the new rules. Then, come back here and refresh the page. The error should disappear.</p>
+        </div>
+        
+        <header class="p-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+            <h1 class="text-3xl font-bold">Production Ticket System</h1>
+             <div class="flex justify-between items-center">
+                <p class="opacity-80 mt-1">Advanced scanning and event management.</p>
+                <p id="session-info" class="text-xs opacity-70 font-mono"></p>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 px-6">
+            <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                <button id="tab-scanner" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Scanner</button>
+                <button id="tab-dashboard" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Dashboard</button>
+                <button id="tab-manage" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Manage Tickets</button>
+            </nav>
+        </div>
+        
+        <!-- Main Content Area -->
+        <main>
+            <!-- Scanner Content -->
+            <div id="content-scanner" class="p-6 md:p-8">
+                 <!-- Scanner UI -->
+            </div>
+
+            <!-- Dashboard Content -->
+            <div id="content-dashboard" class="p-6 md:p-8 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Stats -->
+                    <div>
+                        <h2 class="text-2xl font-bold mb-4 text-gray-700">Live Event Stats</h2>
+                        <div class="space-y-4">
+                            <!-- Checked In -->
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm font-medium text-gray-500">CHECKED IN</p>
+                                <p class="text-3xl font-bold"><span id="scanned-count">0</span> / <span id="total-count-stat">0</span></p>
+                            </div>
+                             <!-- Progress Bar -->
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-base font-medium text-indigo-700">Check-in Progress</span>
+                                    <span class="text-sm font-medium text-indigo-700" id="progress-percent">0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-4">
+                                    <div id="progress-bar" class="bg-indigo-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Chart -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <canvas id="scan-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Tickets Content -->
+            <div id="content-manage" class="p-6 md:p-8 hidden">
+                <!-- Management UI -->
+            </div>
+        </main>
+        
+        <footer class="text-center p-4 border-t border-gray-200">
+            <p class="text-xs text-gray-500">
+                &copy; <span id="copyright-year"></span> Hung Nguyen. All Rights Reserved.
+            </p>
+        </footer>
+
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h3 class="text-lg font-bold text-gray-800" id="modal-title">Confirm Action</h3>
+            <p class="text-gray-600 mt-2" id="modal-message">Are you sure you want to proceed?</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Options Modal -->
+    <div id="export-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h3 class="text-lg font-bold text-gray-800">Export Options</h3>
+            <p class="text-gray-600 mt-2">Choose what you want to download.</p>
+            <div class="mt-4 space-y-3">
+                <label class="flex items-center">
+                    <input type="radio" name="export-option" value="barcodes" class="rounded text-indigo-600 focus:ring-indigo-500" checked>
+                    <span class="ml-2 text-gray-700">Barcodes Only (.zip)</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="radio" name="export-option" value="codes" class="rounded text-indigo-600 focus:ring-indigo-500">
+                    <span class="ml-2 text-gray-700">Codes Only (.txt)</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="radio" name="export-option" value="both" class="rounded text-indigo-600 focus:ring-indigo-500">
+                    <span class="ml-2 text-gray-700">Both (.zip)</span>
+                </label>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="export-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                <button id="export-confirm-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Download</button>
+            </div>
+        </div>
+    </div>
+
+
+<script type="module">
+    // --- Firebase SDK Imports ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getDatabase, ref, onValue, push, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE MANAGEMENT ---
+    let tickets = [];
+    let html5QrCode;
+    let isCameraScanning = false;
+    let currentFilter = 'all';
+    let searchTerm = '';
+    let scanChart;
+    let availableCameras = [];
+    let activeCameraIndex = 0;
+
+    // --- Firebase variables ---
+    let db;
+    let auth;
+    let ticketsRef;
+
+    // --- DOM ELEMENTS ---
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const dbErrorDiv = document.getElementById('db-error');
+    const sessionInfo = document.getElementById('session-info');
+    const tabs = {
+        scanner: document.getElementById('tab-scanner'),
+        dashboard: document.getElementById('tab-dashboard'),
+        manage: document.getElementById('tab-manage'),
+    };
+    const contents = {
+        scanner: document.getElementById('content-scanner'),
+        dashboard: document.getElementById('content-dashboard'),
+        manage: document.getElementById('content-manage'),
+    };
+    
+    // --- Dynamically inject content to keep HTML clean ---
+    contents.scanner.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-8">
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Scan Ticket Barcode</h2>
+                <div id="scanner-controls">
+                    <button id="start-camera-btn" class="w-full mb-4 px-4 py-2 bg-teal-600 hover:bg-teal-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/></svg>
+                        Scan with Camera
+                    </button>
+                    <form id="scan-form">
+                        <input type="text" id="barcode-input" placeholder="Or type code here..." class="w-full p-4 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 text-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-shadow" autofocus>
+                    </form>
+                    <div id="reader" class="w-full hidden my-4"></div>
+                     <div id="camera-options" class="hidden flex justify-center items-center gap-4 my-2">
+                        <button id="switch-camera-btn" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md text-sm font-semibold text-gray-700">Switch Camera</button>
+                        <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="mirror-camera-toggle" class="rounded text-indigo-600 focus:ring-indigo-500">
+                            Mirror Video
+                        </label>
+                    </div>
+                    <button id="stop-camera-btn" class="w-full hidden mt-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md font-semibold text-white shadow-sm">Stop Camera</button>
+                </div>
+                <div id="status-box" class="mt-6 p-6 rounded-lg text-center transition-all duration-300 status-neutral shadow-inner">
+                    <p id="status-text" class="text-4xl font-bold">WAITING FOR SCAN</p>
+                </div>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Recent Scans</h2>
+                <div class="bg-gray-50 rounded-lg p-4 h-64 overflow-y-auto border">
+                    <ul id="scan-log" class="space-y-2">
+                       <li class="text-gray-500">No scans yet.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>`;
+    
+    contents.manage.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-8">
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Add Ticket Codes</h2>
+                <div class="space-y-6">
+                    <div>
+                        <label for="new-ticket-code" class="block text-sm font-medium text-gray-600">Add a Single Code</label>
+                        <form id="add-ticket-form" class="mt-1 flex gap-2"><input type="text" id="new-ticket-code" class="flex-grow p-2 bg-white border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none"><button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Add</button></form>
+                    </div>
+                    <div>
+                        <label for="generate-qty" class="block text-sm font-medium text-gray-600">Generate Random Codes</label>
+                        <div class="mt-1 flex gap-2"><input type="number" id="generate-qty" value="10" min="1" max="100" class="w-24 p-2 bg-white border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none text-center"><button type="button" id="generate-btn" class="flex-grow px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Generate</button></div>
+                    </div>
+                    <div>
+                        <label for="bulk-ticket-codes" class="block text-sm font-medium text-gray-600">Bulk Add (one code per line)</label>
+                        <textarea id="bulk-ticket-codes" rows="5" class="w-full mt-1 p-2 bg-white border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none"></textarea>
+                        <button id="bulk-add-btn" class="mt-2 w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Add Codes from List</button>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-4 space-y-2">
+                        <h3 class="text-md font-semibold text-gray-600">Data Management</h3>
+                        <label for="import-file-input" class="w-full cursor-pointer text-center px-4 py-2 bg-teal-600 hover:bg-teal-700 rounded-md font-semibold text-white shadow-sm block transition-transform hover:scale-105">Import from File (.csv, .txt)</label>
+                        <input type="file" id="import-file-input" class="hidden" accept=".csv,.txt">
+                        <button id="export-btn" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Export Data...</button>
+                        <button id="clear-all-btn" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700 whitespace-nowrap">Master Ticket List</h2>
+                    <input type="search" id="search-input" placeholder="Search codes..." class="w-full sm:w-auto p-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex space-x-1 bg-gray-200 p-1 rounded-md text-sm">
+                        <button data-filter="all" class="filter-btn px-3 py-1 rounded-md hover:bg-gray-300 filter-btn-active">All</button>
+                        <button data-filter="scanned" class="filter-btn px-3 py-1 rounded-md hover:bg-gray-300">Scanned</button>
+                        <button data-filter="not_scanned" class="filter-btn px-3 py-1 rounded-md hover:bg-gray-300">Not Scanned</button>
+                    </div>
+                    <span id="ticket-count" class="text-sm text-gray-500"></span>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 h-96 overflow-y-auto border">
+                    <div id="ticket-list-container"></div>
+                </div>
+            </div>
+        </div>`;
+
+    // --- Re-assign DOM elements after injection ---
+    const barcodeInput = document.getElementById('barcode-input');
+    const scanForm = document.getElementById('scan-form');
+    const statusBox = document.getElementById('status-box');
+    const statusText = document.getElementById('status-text');
+    const scanLog = document.getElementById('scan-log');
+    const startCameraBtn = document.getElementById('start-camera-btn');
+    const stopCameraBtn = document.getElementById('stop-camera-btn');
+    const readerDiv = document.getElementById('reader');
+    const addTicketForm = document.getElementById('add-ticket-form');
+    const newTicketInput = document.getElementById('new-ticket-code');
+    const bulkTicketArea = document.getElementById('bulk-ticket-codes');
+    const bulkAddBtn = document.getElementById('bulk-add-btn');
+    const exportBtn = document.getElementById('export-btn');
+    const importFileInput = document.getElementById('import-file-input');
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    const ticketListContainer = document.getElementById('ticket-list-container');
+    const ticketCount = document.getElementById('ticket-count');
+    const generateQtyInput = document.getElementById('generate-qty');
+    const generateBtn = document.getElementById('generate-btn');
+    const searchInput = document.getElementById('search-input');
+    const modal = document.getElementById('confirmation-modal');
+    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const exportModal = document.getElementById('export-modal');
+    const exportConfirmBtn = document.getElementById('export-confirm-btn');
+    const exportCancelBtn = document.getElementById('export-cancel-btn');
+    const cameraOptionsDiv = document.getElementById('camera-options');
+    const switchCameraBtn = document.getElementById('switch-camera-btn');
+    const mirrorCameraToggle = document.getElementById('mirror-camera-toggle');
+    let confirmCallback = null;
+    let statusResetTimer = null;
+    
+    // --- Audio Context for sound feedback ---
+    let audioCtx;
+    const playSound = (type) => {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioCtx) return; // Web Audio API not supported
+        }
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01);
+
+        switch(type) {
+            case 'VALID':
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
+                break;
+            case 'DUPLICATE':
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+                break;
+            case 'INVALID':
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(220, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4);
+                break;
+        }
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.4);
+    };
+
+    // --- CORE FUNCTIONS ---
+    const showDbError = (show) => {
+        const appElements = document.querySelectorAll('header, nav, main, footer');
+        if (show) {
+            appElements.forEach(el => el.classList.add('hidden'));
+            dbErrorDiv.classList.remove('hidden');
+        } else {
+            appElements.forEach(el => el.classList.remove('hidden'));
+            dbErrorDiv.classList.add('hidden');
+        }
+    };
+
+    const setActiveTab = (tabName) => {
+        Object.keys(tabs).forEach(key => {
+            tabs[key].classList.toggle('tab-active', key === tabName);
+            contents[key].classList.toggle('hidden', key !== tabName);
+        });
+        if(tabName === 'scanner') barcodeInput.focus();
+        if(tabName === 'dashboard') updateDashboard();
+    };
+    
+    const updateAllUI = () => {
+        renderTicketList();
+        updateDashboard();
+    };
+    
+    const renderTicketList = () => {
+        ticketListContainer.innerHTML = '';
+        const filteredTickets = tickets.filter(ticket => {
+            const matchesFilter = (currentFilter === 'all') || (currentFilter === 'scanned' && ticket.scanned) || (currentFilter === 'not_scanned' && !ticket.scanned);
+            const matchesSearch = searchTerm === '' || ticket.code.toLowerCase().includes(searchTerm);
+            return matchesFilter && matchesSearch;
+        }).sort((a, b) => b.addedDate - a.addedDate);
+
+        if (filteredTickets.length === 0) {
+            ticketListContainer.innerHTML = `<p class="text-gray-500">No tickets match criteria.</p>`;
+        } else {
+            filteredTickets.forEach(ticket => {
+                const statusClass = ticket.scanned ? 'bg-green-500' : 'bg-yellow-500';
+                const statusText = ticket.scanned ? 'Scanned' : 'Not Scanned';
+                const ticketEl = document.createElement('div');
+                ticketEl.className = 'flex justify-between items-center p-2 rounded hover:bg-gray-200';
+                const addedDate = ticket.addedDate ? new Date(ticket.addedDate).toLocaleString() : 'N/A';
+                const scanTime = ticket.scanTime ? new Date(ticket.scanTime).toLocaleString() : 'N/A';
+                ticketEl.innerHTML = `<div><span class="font-mono text-gray-600">${ticket.code}</span><span class="block text-xs text-gray-400">Added: ${addedDate}</span><span class="block text-xs text-gray-400">Scanned: ${scanTime}</span></div><div class="flex items-center space-x-2"><span class="px-2 py-0.5 text-xs font-semibold rounded-full ${statusClass} text-white">${statusText}</span><button data-id="${ticket.id}" class="toggle-status-btn p-1 rounded-md bg-gray-300 hover:bg-gray-400 text-gray-600 transition-colors" title="Toggle Status"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg></button><button data-code="${ticket.code}" class="download-barcode-btn p-1 rounded-md bg-gray-300 hover:bg-gray-400 text-gray-600 transition-colors" title="Download Barcode"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg></button></div>`;
+                ticketListContainer.appendChild(ticketEl);
+            });
+        }
+        ticketCount.textContent = `${filteredTickets.length} / ${tickets.length} tickets`;
+    };
+
+    const updateDashboard = () => {
+        if (!contents.dashboard || contents.dashboard.classList.contains('hidden')) return;
+        const totalTickets = tickets.length;
+        const scannedTickets = tickets.filter(t => t.scanned).length;
+        const notScannedTickets = totalTickets - scannedTickets;
+        const percentage = totalTickets > 0 ? Math.round((scannedTickets / totalTickets) * 100) : 0;
+        document.getElementById('scanned-count').textContent = scannedTickets;
+        document.getElementById('total-count-stat').textContent = totalTickets;
+        document.getElementById('progress-percent').textContent = `${percentage}%`;
+        document.getElementById('progress-bar').style.width = `${percentage}%`;
+        const ctx = document.getElementById('scan-chart').getContext('2d');
+        const chartData = { labels: ['Scanned', 'Not Scanned'], datasets: [{ label: 'Ticket Status', data: [scannedTickets, notScannedTickets], backgroundColor: ['#10b981', '#f59e0b'], borderColor: ['#f9fafb'], borderWidth: 2 }] };
+        if (scanChart) { scanChart.data = chartData; scanChart.update(); } 
+        else { scanChart = new Chart(ctx, { type: 'doughnut', data: chartData, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#4b5563', font: { family: "'Inter', sans-serif" } } }, title: { display: true, text: 'Ticket Scan Status', color: '#4b5563', font: { size: 16, family: "'Inter', sans-serif" } } } } }); }
+    };
+
+    const handleScan = async (code) => {
+        if (!code) return;
+        clearTimeout(statusResetTimer);
+        const ticket = tickets.find(t => t.code.toLowerCase() === code.toLowerCase());
+        let scanStatus;
+        if (!ticket) { scanStatus = 'INVALID'; } 
+        else if (ticket.scanned) { scanStatus = 'DUPLICATE'; } 
+        else {
+            scanStatus = 'VALID';
+            const ticketDocRef = ref(db, `${ticketsRef.key}/${ticket.id}`);
+            await update(ticketDocRef, { scanned: true, scanTime: serverTimestamp() });
+        }
+        updateStatusUI(scanStatus, code);
+        addLogEntry(code, scanStatus);
+        playSound(scanStatus);
+        barcodeInput.value = '';
+        barcodeInput.focus();
+        statusResetTimer = setTimeout(() => updateStatusUI('NEUTRAL'), 5000);
+    };
+
+    // --- Helper functions ---
+    const downloadBarcode=(c)=>{const t=document.createElementNS("http://www.w3.org/2000/svg","svg");t.setAttribute("id","barcode-temp"),t.style.display="none",document.body.appendChild(t),JsBarcode("#barcode-temp",c,{format:"CODE128",xmln:"http://www.w3.org/2000/svg",lineColor:"#000",width:2,height:100,displayValue:!0});const e=new XMLSerializer().serializeToString(t),o=new Blob([e],{type:"image/svg+xml"}),d=URL.createObjectURL(o),n=document.createElement("a");n.href=d,n.download=`barcode-${c}.svg`,document.body.appendChild(n),n.click(),document.body.removeChild(n),document.body.removeChild(t),URL.revokeObjectURL(d)};
+    const addLogEntry=(c,s)=>{if(scanLog.children.length>0&&scanLog.children[0].textContent.includes("No scans yet"))scanLog.innerHTML="";let t="";"VALID"===s?t="text-green-600":"DUPLICATE"===s?t="text-yellow-600":"INVALID"===s&&(t="text-red-600");const n=document.createElement("li");n.className="flex justify-between items-center text-sm p-1 rounded";const e=new Date().toLocaleTimeString();n.innerHTML=`<div><span class="font-mono font-medium">${c}</span><span class="text-gray-500 ml-2">${e}</span></div><strong class="${t}">${s}</strong>`,scanLog.insertBefore(n,scanLog.firstChild)};
+    const updateStatusUI=(s,c)=>{statusBox.classList.remove("status-valid","status-duplicate","status-invalid","status-neutral");let t="";switch(s){case"VALID":statusBox.classList.add("status-valid"),t=`VALID: ${c}`;break;case"DUPLICATE":statusBox.classList.add("status-duplicate"),t=`DUPLICATE: ${c}`;break;case"INVALID":statusBox.classList.add("status-invalid"),t=`INVALID: ${c}`;break;default:statusBox.classList.add("status-neutral"),t="WAITING FOR SCAN"}statusText.textContent=t};
+    const generateRandomCode=(l=8)=>{const c="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";let r="";for(let i=0;i<l;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r};
+    const showModal=(modalEl)=>{modalEl.classList.remove("opacity-0","pointer-events-none"),modalEl.querySelector(".modal-content").classList.remove("scale-95")};
+    const hideModal=(modalEl)=>{modalEl.classList.add("opacity-0","pointer-events-none"),modalEl.querySelector(".modal-content").classList.add("scale-95")};
+    
+    const stopCameraScan = () => {
+        if (isCameraScanning) {
+            html5QrCode.stop().catch(e => console.warn("Error stopping camera scan:", e)).finally(() => {
+                isCameraScanning = false;
+                scanForm.classList.remove("hidden");
+                readerDiv.classList.add("hidden");
+                startCameraBtn.classList.remove("hidden");
+                stopCameraBtn.classList.add("hidden");
+                cameraOptionsDiv.classList.add("hidden");
+                const video = readerDiv.querySelector('video');
+                if(video) video.classList.remove('mirrored');
+                mirrorCameraToggle.checked = false; 
+                barcodeInput.focus();
+            });
+        }
+    };
+    
+    const onScanSuccess=(d,r)=>{handleScan(d),stopCameraScan()};
+    
+    // --- EVENT LISTENERS ---
+    Object.keys(tabs).forEach(key=>tabs[key].addEventListener('click',()=> { stopCameraScan(); setActiveTab(key); }));
+    scanForm.addEventListener('submit',e=>{e.preventDefault();handleScan(barcodeInput.value.trim())});
+    startCameraBtn.addEventListener('click', async () => {
+        scanForm.classList.add("hidden");
+        readerDiv.classList.remove("hidden");
+        startCameraBtn.classList.add("hidden");
+        stopCameraBtn.classList.remove("hidden");
+        cameraOptionsDiv.classList.remove("hidden");
+        try {
+            if (availableCameras.length === 0) { availableCameras = await Html5Qrcode.getCameras(); }
+            if (availableCameras && availableCameras.length) {
+                isCameraScanning = true;
+                const backCameraIndex = availableCameras.findIndex(cam => cam.label.toLowerCase().includes('back'));
+                activeCameraIndex = backCameraIndex !== -1 ? backCameraIndex : 0;
+                switchCameraBtn.classList.toggle('hidden', availableCameras.length <= 1);
+                await html5QrCode.start(availableCameras[activeCameraIndex].id, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, (errorMessage) => {});
+            } else { throw new Error("No cameras found."); }
+        } catch (e) { console.error("Unable to start scanning", e); alert("Could not start camera. Please grant permission and try again. Error: " + e.message); stopCameraScan(); }
+    });
+    stopCameraBtn.addEventListener('click', stopCameraScan);
+    switchCameraBtn.addEventListener('click', async () => {
+        if (availableCameras.length > 1 && isCameraScanning) {
+            await html5QrCode.stop();
+            activeCameraIndex = (activeCameraIndex + 1) % availableCameras.length;
+            await html5QrCode.start(availableCameras[activeCameraIndex].id, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, (errorMessage) => {});
+            if (mirrorCameraToggle.checked) { setTimeout(() => { const video = readerDiv.querySelector('video'); if(video) video.classList.add('mirrored'); }, 100); }
+        }
+    });
+    mirrorCameraToggle.addEventListener('change', () => { const video = readerDiv.querySelector('video'); if (video) { video.classList.toggle('mirrored', mirrorCameraToggle.checked); }});
+    addTicketForm.addEventListener('submit',async e=>{e.preventDefault();const t=newTicketInput.value.trim();if(t){if(tickets.some(e=>e.code.toLowerCase()===t.toLowerCase())){console.warn(`Ticket ${t} already exists.`)}else{await push(ticketsRef,{code:t,scanned:!1,scanTime:null,addedDate:serverTimestamp()})}newTicketInput.value=""}});
+    generateBtn.addEventListener('click',async()=>{const e=parseInt(generateQtyInput.value,10);if(isNaN(e)||e<1)return;const t={};for(let o=0;o<e;o++){let e;do{e=generateRandomCode()}while(tickets.some(t=>t.code.toLowerCase()===e.toLowerCase()) || Object.values(t).some(upd => upd.code.toLowerCase() === e.toLowerCase()));const n=push(ticketsRef).key;t[n]={code:e,scanned:!1,scanTime:null,addedDate:serverTimestamp()}}await update(ticketsRef,t)});
+    bulkAddBtn.addEventListener('click',async()=>{const e=bulkTicketArea.value.split("\n").map(e=>e.trim()).filter(e=>""!==e),t={};e.forEach(e=>{if(!tickets.some(t=>t.code.toLowerCase()===e.toLowerCase()) && !Object.values(t).some(upd => upd.code.toLowerCase() === e.toLowerCase())){const o=push(ticketsRef).key;t[o]={code:e,scanned:!1,scanTime:null,addedDate:serverTimestamp()}}}),Object.keys(t).length>0&&await update(ticketsRef,t),bulkTicketArea.value=""});
+    clearAllBtn.addEventListener('click',()=>{showModal(modal); confirmCallback = async ()=>{ await set(ticketsRef, null); hideModal(modal); }});
+    searchInput.addEventListener('input',e=>{searchTerm=e.target.value.toLowerCase();renderTicketList()});
+    document.querySelector('#content-manage .flex.space-x-1').addEventListener('click',e=>{if(e.target.matches('.filter-btn')){currentFilter=e.target.dataset.filter;document.querySelectorAll('.filter-btn').forEach(e=>e.classList.remove('filter-btn-active'));e.target.classList.add('filter-btn-active');renderTicketList()}});
+    ticketListContainer.addEventListener('click',async e=>{const t=e.target.closest('.toggle-status-btn');if(t){const e=t.dataset.id,o=tickets.find(t=>t.id===e);if(o){const t=ref(db,`${ticketsRef.key}/${o.id}`),d=!o.scanned;await update(t,{scanned:d,scanTime:d?serverTimestamp():null})}}const o=e.target.closest('.download-barcode-btn');o&&downloadBarcode(o.dataset.code)});
+    modalConfirmBtn.addEventListener('click',()=>confirmCallback&&confirmCallback());
+    modalCancelBtn.addEventListener('click',()=>hideModal(modal));
+    exportCancelBtn.addEventListener('click', ()=>hideModal(exportModal));
+    importFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const content = e.target.result;
+            const codes = content.split(/\r?\n/).map(c => c.trim()).filter(c => c !== "");
+            const updates = {};
+            let addedCount = 0;
+            codes.forEach(code => {
+                if (!tickets.some(t => t.code.toLowerCase() === code.toLowerCase()) && !Object.values(updates).some(upd => upd.code.toLowerCase() === code.toLowerCase())) {
+                    const newKey = push(ticketsRef).key;
+                    updates[newKey] = { code: code, scanned: false, scanTime: null, addedDate: serverTimestamp() };
+                    addedCount++;
+                }
+            });
+            if (addedCount > 0) {
+                await update(ticketsRef, updates);
+                console.log(`Imported ${addedCount} new tickets.`);
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    });
+    exportBtn.addEventListener('click', () => { if (tickets.length === 0) { alert("No tickets to export."); return; } showModal(exportModal); });
+    exportConfirmBtn.addEventListener('click', async () => {
+        const exportOption = document.querySelector('input[name="export-option"]:checked').value;
+        hideModal(exportModal);
+        const button = exportConfirmBtn;
+        const originalText = button.textContent;
+        button.textContent = 'Generating...';
+        button.disabled = true;
+        if (exportOption === 'codes') {
+            const codesText = tickets.map(t => t.code).join('\r\n');
+            const blob = new Blob([codesText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a'); link.href = url; link.download = 'ticket_codes.txt'; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+        } else {
+            const zip = new JSZip();
+            const barcodeFolder = zip.folder("barcodes");
+            const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            tempSvg.setAttribute('id', 'barcode-batch-temp');
+            tempSvg.style.display = 'none'; document.body.appendChild(tempSvg);
+            for (const ticket of tickets) {
+                JsBarcode("#barcode-batch-temp", ticket.code, { format: "CODE128", xmln: "http://www.w3.org/2000/svg", lineColor: "#000", width: 2, height: 100, displayValue: true });
+                barcodeFolder.file(`barcode-${ticket.code}.svg`, new XMLSerializer().serializeToString(tempSvg));
+            }
+            document.body.removeChild(tempSvg);
+            if (exportOption === 'both') { zip.file('ticket_codes.txt', tickets.map(t => t.code).join('\r\n')); }
+            const content = await zip.generateAsync({type:"blob"});
+            const link = document.createElement("a"); link.href = URL.createObjectURL(content); link.download = "ticket_export.zip"; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(link.href);
+        }
+        button.textContent = originalText;
+        button.disabled = false;
+    });
+    
+    // --- FIREBASE INITIALIZATION ---
+    async function initFirebase() {
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtvW74YQNYvcHLcE00FRcX3KiSLYwRu0Y",
+            authDomain: "ticket-scanning-system.firebaseapp.com",
+            projectId: "ticket-scanning-system",
+            storageBucket: "ticket-scanning-system.appspot.com",
+            messagingSenderId: "838741888965",
+            appId: "1:838741888965:web:8671c40f22ddd97a5b05ac",
+            measurementId: "G-09T2MRM75G",
+            databaseURL: "https://ticket-scanning-system-default-rtdb.firebaseio.com"
+        };
+        
+        const finalConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        try {
+            const app = initializeApp(finalConfig);
+            db = getDatabase(app);
+            auth = getAuth(app);
+
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    sessionInfo.textContent = `Session ID: ${user.uid.substring(0, 8)}...`;
+                    
+                    const dbPath = (typeof __app_id !== 'undefined') 
+                        ? `/artifacts/${__app_id}/public/data/tickets` 
+                        : `/tickets`;
+                    
+                    ticketsRef = ref(db, dbPath);
+
+                    onValue(ticketsRef, (snapshot) => {
+                        showDbError(false);
+                        const data = snapshot.val();
+                        tickets = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+                        updateAllUI();
+                        loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+                    }, (error) => {
+                        console.error("Firebase Realtime Database read failed:", error);
+                        if(error.code === 'PERMISSION_DENIED') {
+                            showDbError(true);
+                            loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        }
+                    });
+
+                } else {
+                    sessionInfo.textContent = "Not authenticated";
+                }
+            });
+
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
+            }
+
+        } catch (error) {
+            console.error("Firebase Initialization Error:", error);
+            loadingOverlay.innerHTML = `<p class="text-red-500 font-medium">Could not initialize application. Check Firebase config.</p>`;
+        }
+    }
+    
+    // --- INITIALIZATION ---
+    html5QrCode = new Html5Qrcode("reader");
+    setActiveTab('scanner');
+    document.getElementById('copyright-year').textContent = new Date().getFullYear();
+    initFirebase();
+});
+</script>
+</body>
+</html>
+
