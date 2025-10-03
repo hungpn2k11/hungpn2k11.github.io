@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label for="import-file-input" class="w-full cursor-pointer text-center px-4 py-2 bg-teal-600 hover:bg-teal-700 rounded-md font-semibold text-white shadow-sm block transition-transform hover:scale-105">Import from File (.csv, .txt)</label>
                         <input type="file" id="import-file-input" class="hidden" accept=".csv,.txt">
                         <button id="export-btn" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Export Data...</button>
-                        <button id="clear-all-btn" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Clear All Data</button>
+                        <button id="clear-all-btn" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105">Clear All Tickets</button>
                     </div>
                 </div>
             </div>
@@ -656,12 +656,32 @@ document.addEventListener('DOMContentLoaded', () => {
     addTicketForm.addEventListener('submit',async e=>{e.preventDefault();const t=newTicketInput.value.trim();if(t){if(tickets.some(e=>e.code.toLowerCase()===t.toLowerCase())){console.warn(`Ticket ${t} already exists.`)}else{await push(ticketsRef,{code:t,scanned:!1,scanTime:null,addedDate:serverTimestamp()})}newTicketInput.value=""}});
     generateBtn.addEventListener('click',async()=>{const e=parseInt(generateQtyInput.value,10);if(isNaN(e)||e<1)return;const t={};for(let o=0;o<e;o++){let e;do{e=generateRandomCode()}while(tickets.some(t=>t.code.toLowerCase()===e.toLowerCase()) || Object.values(t).some(upd => upd.code.toLowerCase() === e.toLowerCase()));const n=push(ticketsRef).key;t[n]={code:e,scanned:!1,scanTime:null,addedDate:serverTimestamp()}}await update(ticketsRef,t)});
     bulkAddBtn.addEventListener('click',async()=>{const e=bulkTicketArea.value.split("\n").map(e=>e.trim()).filter(e=>""!==e),t={};e.forEach(e=>{if(!tickets.some(t=>t.code.toLowerCase()===e.toLowerCase()) && !Object.values(t).some(upd => upd.code.toLowerCase() === e.toLowerCase())){const o=push(ticketsRef).key;t[o]={code:e,scanned:!1,scanTime:null,addedDate:serverTimestamp()}}}),Object.keys(t).length>0&&await update(ticketsRef,t),bulkTicketArea.value=""});
-    clearAllBtn.addEventListener('click',()=>{showModal(confirmationModal); confirmCallback = async ()=>{ await set(ticketsRef, null); hideModal(confirmationModal); }});
+    clearAllBtn.addEventListener('click', () => {
+        document.getElementById('modal-title').textContent = 'Clear All Tickets';
+        document.getElementById('modal-message').textContent = `Are you sure you want to delete ALL tickets for this show? This action cannot be undone.`;
+        showModal(modal);
+        confirmCallback = async () => { 
+            try {
+                await set(ticketsRef, null); 
+            } catch (error) {
+                console.error("Error clearing tickets:", error);
+                alert("Failed to clear tickets.");
+            } finally {
+                hideModal(modal);
+                confirmCallback = null;
+            }
+        };
+    });
     searchInput.addEventListener('input',e=>{searchTerm=e.target.value.toLowerCase();renderTicketList()});
     document.querySelector('#content-manage .flex.space-x-1').addEventListener('click',e=>{if(e.target.matches('.filter-btn')){currentFilter=e.target.dataset.filter;document.querySelectorAll('.filter-btn').forEach(e=>e.classList.remove('filter-btn-active'));e.target.classList.add('filter-btn-active');renderTicketList()}});
     ticketListContainer.addEventListener('click',async e=>{const t=e.target.closest('.toggle-status-btn');if(t){const e=t.dataset.id,o=tickets.find(t=>t.id===e);if(o){const t=ref(db,`shows/${selectedShowId}/tickets/${o.id}`),d=!o.scanned;await update(t,{scanned:d,scanTime:d?serverTimestamp():null})}}const o=e.target.closest('.download-barcode-btn');o&&downloadBarcode(o.dataset.code)});
     modalConfirmBtn.addEventListener('click',()=>confirmCallback&&confirmCallback());
-    modalCancelBtn.addEventListener('click',()=>hideModal(confirmationModal));
+    modalCancelBtn.addEventListener('click', () => {
+        hideModal(modal);
+        confirmCallback = null; // Clear the callback to prevent accidental execution
+        targetShowId = null;
+        adminAction = null;
+    });
     exportCancelBtn.addEventListener('click', ()=>hideModal(exportModal));
     passwordCancelBtn.addEventListener('click', ()=>hideModal(passwordModal));
 
@@ -756,16 +776,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    backToShowsBtn.addEventListener('click', () => {
+    const goToShowSelection = () => {
         appContainer.classList.add('hidden');
         showSelectionScreen.classList.remove('hidden');
         if (ticketsListener) {
             ticketsListener(); // Detach listener
+            ticketsListener = null;
         }
         selectedShowId = null;
         tickets = [];
         updateAllUI();
-    });
+    };
+
+    backToShowsBtn.addEventListener('click', goToShowSelection);
 
     showsListDiv.addEventListener('click', (e) => {
         const showButton = e.target.closest('.show-button');
@@ -867,9 +890,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modal-message').textContent = `Are you sure you want to permanently delete this show and all of its tickets? This action cannot be undone.`;
                 showModal(modal);
                 confirmCallback = async () => {
-                    await set(ref(db, `shows/${targetShowId}`), null);
-                    hideModal(modal);
-                    targetShowId = null;
+                    try {
+                        await set(ref(db, `shows/${targetShowId}`), null);
+                    } catch (error) {
+                         console.error("Error deleting show:", error);
+                        alert("Failed to delete the show.");
+                    } finally {
+                        hideModal(modal);
+                        targetShowId = null;
+                        adminAction = null;
+                        confirmCallback = null;
+                    }
                 };
             }
         } else {
@@ -930,7 +961,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         showDbError(false);
                         shows = snapshot.val() || {};
                         renderShowsList();
-                        showSelectionScreen.classList.remove('hidden');
+                         if (!selectedShowId) {
+                            showSelectionScreen.classList.remove('hidden');
+                            appContainer.classList.add('hidden');
+                        }
                         loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
                     }, (error) => {
                         console.error("Firebase Realtime Database read failed:", error);
@@ -965,3 +999,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
