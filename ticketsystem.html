@@ -30,7 +30,7 @@
             color: #4b5563; 
         }
         /* Modal & Camera Styling */
-        #confirmation-modal, #export-modal { transition: opacity 0.3s ease-in-out; }
+        #confirmation-modal, #export-modal, #password-modal, #create-show-modal, #admin-password-modal, #edit-show-modal { transition: opacity 0.3s ease-in-out; }
         .modal-content { transition: transform 0.3s ease-in-out; }
         #reader {
             border: 2px dashed #d1d5db;
@@ -65,7 +65,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p class="mt-4 text-gray-600 font-medium">Connecting to Real-time Database...</p>
+            <p id="loading-text" class="mt-4 text-gray-600 font-medium">Connecting...</p>
         </div>
 
         <div id="db-error" class="hidden p-6 bg-red-100 text-red-900 rounded-lg m-4 border-2 border-red-300">
@@ -89,73 +89,99 @@
             <p class="mt-3">Click the <strong>Publish</strong> button to save the new rules. Then, come back here and refresh the page. The error should disappear.</p>
         </div>
         
-        <header class="p-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
-            <h1 class="text-3xl font-bold">Production Ticket System</h1>
-             <div class="flex justify-between items-center">
-                <p class="opacity-80 mt-1">Advanced scanning and event management.</p>
-                <p id="session-info" class="text-xs opacity-70 font-mono"></p>
-            </div>
-        </header>
+        <div id="show-selection-screen" class="p-8 hidden">
+            <h1 class="text-3xl font-bold text-gray-800 text-center">Event Management</h1>
+            <p class="text-center text-gray-500 mt-2">Create a new show or select an existing one to manage.</p>
 
-        <!-- Tabs -->
-        <div class="border-b border-gray-200 px-6">
-            <nav class="-mb-px flex space-x-6" aria-label="Tabs">
-                <button id="tab-scanner" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Scanner</button>
-                <button id="tab-dashboard" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Dashboard</button>
-                <button id="tab-manage" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Manage Tickets</button>
-            </nav>
+            <div class="mt-8">
+                 <button id="create-show-btn" class="w-full mb-6 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold text-white shadow-sm transition-transform hover:scale-105 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+                      <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                      <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                    </svg>
+                    Create New Show
+                </button>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Existing Shows</h2>
+                <div id="shows-list" class="space-y-3">
+                    <p class="text-gray-500">Loading shows...</p>
+                </div>
+            </div>
         </div>
-        
-        <!-- Main Content Area -->
-        <main>
-            <!-- Scanner Content -->
-            <div id="content-scanner" class="p-6 md:p-8">
-                 <!-- Scanner UI -->
-            </div>
 
-            <!-- Dashboard Content -->
-            <div id="content-dashboard" class="p-6 md:p-8 hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- Stats -->
-                    <div>
-                        <h2 class="text-2xl font-bold mb-4 text-gray-700">Live Event Stats</h2>
-                        <div class="space-y-4">
-                            <!-- Checked In -->
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <p class="text-sm font-medium text-gray-500">CHECKED IN</p>
-                                <p class="text-3xl font-bold"><span id="scanned-count">0</span> / <span id="total-count-stat">0</span></p>
-                            </div>
-                             <!-- Progress Bar -->
-                            <div>
-                                <div class="flex justify-between mb-1">
-                                    <span class="text-base font-medium text-indigo-700">Check-in Progress</span>
-                                    <span class="text-sm font-medium text-indigo-700" id="progress-percent">0%</span>
+        <div id="app-container" class="hidden">
+            <header class="p-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                <div class="flex justify-between items-center">
+                    <h1 id="app-title" class="text-3xl font-bold">Production Ticket System</h1>
+                    <button id="back-to-shows-btn" class="text-sm opacity-80 hover:opacity-100 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/></svg>
+                        All Shows
+                    </button>
+                </div>
+                 <div class="flex justify-between items-center mt-1">
+                    <p class="opacity-80">Advanced scanning and event management.</p>
+                    <p id="session-info" class="text-xs opacity-70 font-mono"></p>
+                </div>
+            </header>
+
+            <!-- Tabs -->
+            <div class="border-b border-gray-200 px-6">
+                <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button id="tab-scanner" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Scanner</button>
+                    <button id="tab-dashboard" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Dashboard</button>
+                    <button id="tab-manage" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-indigo-600">Manage Tickets</button>
+                </nav>
+            </div>
+            
+            <!-- Main Content Area -->
+            <main>
+                <!-- Scanner Content -->
+                <div id="content-scanner" class="p-6 md:p-8">
+                     <!-- Scanner UI -->
+                </div>
+
+                <!-- Dashboard Content -->
+                <div id="content-dashboard" class="p-6 md:p-8 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Stats -->
+                        <div>
+                            <h2 class="text-2xl font-bold mb-4 text-gray-700">Live Event Stats</h2>
+                            <div class="space-y-4">
+                                <!-- Checked In -->
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-500">CHECKED IN</p>
+                                    <p class="text-3xl font-bold"><span id="scanned-count">0</span> / <span id="total-count-stat">0</span></p>
                                 </div>
-                                <div class="w-full bg-gray-200 rounded-full h-4">
-                                    <div id="progress-bar" class="bg-indigo-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                 <!-- Progress Bar -->
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-base font-medium text-indigo-700">Check-in Progress</span>
+                                        <span class="text-sm font-medium text-indigo-700" id="progress-percent">0%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-4">
+                                        <div id="progress-bar" class="bg-indigo-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <!-- Chart -->
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <canvas id="scan-chart"></canvas>
+                        <!-- Chart -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <canvas id="scan-chart"></canvas>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Manage Tickets Content -->
-            <div id="content-manage" class="p-6 md:p-8 hidden">
-                <!-- Management UI -->
-            </div>
-        </main>
-        
-        <footer class="text-center p-4 border-t border-gray-200">
-            <p class="text-xs text-gray-500">
-                &copy; <span id="copyright-year"></span> Hung Nguyen. All Rights Reserved.
-            </p>
-        </footer>
-
+                <!-- Manage Tickets Content -->
+                <div id="content-manage" class="p-6 md:p-8 hidden">
+                    <!-- Management UI -->
+                </div>
+            </main>
+            
+            <footer class="text-center p-4 border-t border-gray-200">
+                <p class="text-xs text-gray-500">
+                    &copy; <span id="copyright-year"></span> Hung Nguyen. All Rights Reserved.
+                </p>
+            </footer>
+        </div>
     </div>
 
     <!-- Confirmation Modal -->
@@ -195,6 +221,80 @@
             </div>
         </div>
     </div>
+    
+    <!-- Password Modal -->
+    <div id="password-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h3 class="text-lg font-bold text-gray-800">Access Show</h3>
+            <p class="text-gray-600 mt-2">Please enter the password for this show.</p>
+            <form id="password-form" class="mt-4">
+                <input type="password" id="password-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none">
+                <p id="password-error" class="text-red-500 text-sm mt-1 hidden">Incorrect password. Please try again.</p>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="password-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Enter Show</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+     <!-- Create Show Modal -->
+    <div id="create-show-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h3 class="text-lg font-bold text-gray-800">Create New Show</h3>
+            <form id="create-show-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="show-name-input" class="block text-sm font-medium text-gray-700">Show Name</label>
+                    <input type="text" id="show-name-input" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none" required>
+                </div>
+                <div>
+                    <label for="show-password-input" class="block text-sm font-medium text-gray-700">Admin Password</label>
+                    <input type="password" id="show-password-input" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none" required>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="create-show-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Admin Password Modal -->
+    <div id="admin-password-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h3 class="text-lg font-bold text-gray-800">Master Admin Access</h3>
+            <p class="text-gray-600 mt-2">Enter the master admin password to proceed.</p>
+            <form id="admin-password-form" class="mt-4">
+                <input type="password" id="admin-password-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none">
+                <p id="admin-password-error" class="text-red-500 text-sm mt-1 hidden">Incorrect master password.</p>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="admin-password-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+     <!-- Edit Show Modal -->
+    <div id="edit-show-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h3 class="text-lg font-bold text-gray-800">Edit Show</h3>
+            <form id="edit-show-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="edit-show-name-input" class="block text-sm font-medium text-gray-700">Show Name</label>
+                    <input type="text" id="edit-show-name-input" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none" required>
+                </div>
+                <div>
+                    <label for="edit-show-password-input" class="block text-sm font-medium text-gray-700">Admin Password (leave blank to keep unchanged)</label>
+                    <input type="password" id="edit-show-password-input" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="edit-show-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
 <script type="module">
@@ -206,6 +306,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- STATE MANAGEMENT ---
     let tickets = [];
+    let shows = {};
+    let selectedShowId = null;
     let html5QrCode;
     let isCameraScanning = false;
     let currentFilter = 'all';
@@ -213,15 +315,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let scanChart;
     let availableCameras = [];
     let activeCameraIndex = 0;
+    let adminAction = null; // 'create', 'edit', 'delete'
+    let targetShowId = null; // for edit/delete actions
 
     // --- Firebase variables ---
     let db;
     let auth;
     let ticketsRef;
+    let showsRef;
+    let ticketsListener = null;
 
     // --- DOM ELEMENTS ---
     const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
     const dbErrorDiv = document.getElementById('db-error');
+    const showSelectionScreen = document.getElementById('show-selection-screen');
+    const appContainer = document.getElementById('app-container');
+    const showsListDiv = document.getElementById('shows-list');
+    const createShowBtn = document.getElementById('create-show-btn');
+    const backToShowsBtn = document.getElementById('back-to-shows-btn');
+    const appTitle = document.getElementById('app-title');
     const sessionInfo = document.getElementById('session-info');
     const tabs = {
         scanner: document.getElementById('tab-scanner'),
@@ -345,6 +458,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportModal = document.getElementById('export-modal');
     const exportConfirmBtn = document.getElementById('export-confirm-btn');
     const exportCancelBtn = document.getElementById('export-cancel-btn');
+    const passwordModal = document.getElementById('password-modal');
+    const passwordForm = document.getElementById('password-form');
+    const passwordInput = document.getElementById('password-input');
+    const passwordError = document.getElementById('password-error');
+    const passwordCancelBtn = document.getElementById('password-cancel-btn');
+    const createShowModal = document.getElementById('create-show-modal');
+    const createShowForm = document.getElementById('create-show-form');
+    const showNameInput = document.getElementById('show-name-input');
+    const showPasswordInput = document.getElementById('show-password-input');
+    const createShowCancelBtn = document.getElementById('create-show-cancel-btn');
+    const editShowModal = document.getElementById('edit-show-modal');
+    const editShowForm = document.getElementById('edit-show-form');
+    const editShowNameInput = document.getElementById('edit-show-name-input');
+    const editShowPasswordInput = document.getElementById('edit-show-password-input');
+    const editShowCancelBtn = document.getElementById('edit-show-cancel-btn');
+    const adminPasswordModal = document.getElementById('admin-password-modal');
+    const adminPasswordForm = document.getElementById('admin-password-form');
+    const adminPasswordInput = document.getElementById('admin-password-input');
+    const adminPasswordError = document.getElementById('admin-password-error');
+    const adminPasswordCancelBtn = document.getElementById('admin-password-cancel-btn');
     const cameraOptionsDiv = document.getElementById('camera-options');
     const switchCameraBtn = document.getElementById('switch-camera-btn');
     const mirrorCameraToggle = document.getElementById('mirror-camera-toggle');
@@ -367,21 +500,9 @@ document.addEventListener('DOMContentLoaded', () => {
         gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01);
 
         switch(type) {
-            case 'VALID':
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
-                break;
-            case 'DUPLICATE':
-                oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
-                break;
-            case 'INVALID':
-                oscillator.type = 'sawtooth';
-                oscillator.frequency.setValueAtTime(220, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4);
-                break;
+            case 'VALID': oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(600, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2); break;
+            case 'DUPLICATE': oscillator.type = 'square'; oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3); break;
+            case 'INVALID': oscillator.type = 'sawtooth'; oscillator.frequency.setValueAtTime(220, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4); break;
         }
         oscillator.start(audioCtx.currentTime);
         oscillator.stop(audioCtx.currentTime + 0.4);
@@ -389,13 +510,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CORE FUNCTIONS ---
     const showDbError = (show) => {
-        const appElements = document.querySelectorAll('header, nav, main, footer');
+        const appElements = document.querySelectorAll('header, nav, main, footer, #show-selection-screen');
         if (show) {
             appElements.forEach(el => el.classList.add('hidden'));
             dbErrorDiv.classList.remove('hidden');
         } else {
-            appElements.forEach(el => el.classList.remove('hidden'));
-            dbErrorDiv.classList.add('hidden');
+            // Don't unhide all, just the error div
+             dbErrorDiv.classList.add('hidden');
         }
     };
 
@@ -404,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tabs[key].classList.toggle('tab-active', key === tabName);
             contents[key].classList.toggle('hidden', key !== tabName);
         });
+
         if(tabName === 'scanner') barcodeInput.focus();
         if(tabName === 'dashboard') updateDashboard();
     };
@@ -463,7 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (ticket.scanned) { scanStatus = 'DUPLICATE'; } 
         else {
             scanStatus = 'VALID';
-            const ticketDocRef = ref(db, `${ticketsRef.key}/${ticket.id}`);
+            const ticketDocRef = ref(db, `shows/${selectedShowId}/tickets/${ticket.id}`);
             await update(ticketDocRef, { scanned: true, scanTime: serverTimestamp() });
         }
         updateStatusUI(scanStatus, code);
@@ -534,13 +656,28 @@ document.addEventListener('DOMContentLoaded', () => {
     addTicketForm.addEventListener('submit',async e=>{e.preventDefault();const t=newTicketInput.value.trim();if(t){if(tickets.some(e=>e.code.toLowerCase()===t.toLowerCase())){console.warn(`Ticket ${t} already exists.`)}else{await push(ticketsRef,{code:t,scanned:!1,scanTime:null,addedDate:serverTimestamp()})}newTicketInput.value=""}});
     generateBtn.addEventListener('click',async()=>{const e=parseInt(generateQtyInput.value,10);if(isNaN(e)||e<1)return;const t={};for(let o=0;o<e;o++){let e;do{e=generateRandomCode()}while(tickets.some(t=>t.code.toLowerCase()===e.toLowerCase()) || Object.values(t).some(upd => upd.code.toLowerCase() === e.toLowerCase()));const n=push(ticketsRef).key;t[n]={code:e,scanned:!1,scanTime:null,addedDate:serverTimestamp()}}await update(ticketsRef,t)});
     bulkAddBtn.addEventListener('click',async()=>{const e=bulkTicketArea.value.split("\n").map(e=>e.trim()).filter(e=>""!==e),t={};e.forEach(e=>{if(!tickets.some(t=>t.code.toLowerCase()===e.toLowerCase()) && !Object.values(t).some(upd => upd.code.toLowerCase() === e.toLowerCase())){const o=push(ticketsRef).key;t[o]={code:e,scanned:!1,scanTime:null,addedDate:serverTimestamp()}}}),Object.keys(t).length>0&&await update(ticketsRef,t),bulkTicketArea.value=""});
-    clearAllBtn.addEventListener('click',()=>{showModal(modal); confirmCallback = async ()=>{ await set(ticketsRef, null); hideModal(modal); }});
+    clearAllBtn.addEventListener('click',()=>{showModal(confirmationModal); confirmCallback = async ()=>{ await set(ticketsRef, null); hideModal(confirmationModal); }});
     searchInput.addEventListener('input',e=>{searchTerm=e.target.value.toLowerCase();renderTicketList()});
     document.querySelector('#content-manage .flex.space-x-1').addEventListener('click',e=>{if(e.target.matches('.filter-btn')){currentFilter=e.target.dataset.filter;document.querySelectorAll('.filter-btn').forEach(e=>e.classList.remove('filter-btn-active'));e.target.classList.add('filter-btn-active');renderTicketList()}});
-    ticketListContainer.addEventListener('click',async e=>{const t=e.target.closest('.toggle-status-btn');if(t){const e=t.dataset.id,o=tickets.find(t=>t.id===e);if(o){const t=ref(db,`${ticketsRef.key}/${o.id}`),d=!o.scanned;await update(t,{scanned:d,scanTime:d?serverTimestamp():null})}}const o=e.target.closest('.download-barcode-btn');o&&downloadBarcode(o.dataset.code)});
+    ticketListContainer.addEventListener('click',async e=>{const t=e.target.closest('.toggle-status-btn');if(t){const e=t.dataset.id,o=tickets.find(t=>t.id===e);if(o){const t=ref(db,`shows/${selectedShowId}/tickets/${o.id}`),d=!o.scanned;await update(t,{scanned:d,scanTime:d?serverTimestamp():null})}}const o=e.target.closest('.download-barcode-btn');o&&downloadBarcode(o.dataset.code)});
     modalConfirmBtn.addEventListener('click',()=>confirmCallback&&confirmCallback());
-    modalCancelBtn.addEventListener('click',()=>hideModal(modal));
+    modalCancelBtn.addEventListener('click',()=>hideModal(confirmationModal));
     exportCancelBtn.addEventListener('click', ()=>hideModal(exportModal));
+    passwordCancelBtn.addEventListener('click', ()=>hideModal(passwordModal));
+
+    passwordForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const password = passwordInput.value;
+        if (selectedShowId && shows[selectedShowId] && password === shows[selectedShowId].password) {
+            passwordInput.value = '';
+            passwordError.classList.add('hidden');
+            hideModal(passwordModal);
+            selectShow(selectedShowId);
+        } else {
+            passwordError.classList.remove('hidden');
+        }
+    });
+
     importFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -596,6 +733,167 @@ document.addEventListener('DOMContentLoaded', () => {
         button.textContent = originalText;
         button.disabled = false;
     });
+
+    createShowBtn.addEventListener('click', () => {
+        adminAction = 'create';
+        showModal(adminPasswordModal);
+        adminPasswordInput.focus();
+    });
+    createShowCancelBtn.addEventListener('click', () => hideModal(createShowModal));
+
+    createShowForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const showName = showNameInput.value;
+        const showPassword = showPasswordInput.value;
+        if (showName && showPassword) {
+            await push(showsRef, {
+                name: showName,
+                password: showPassword,
+                createdAt: serverTimestamp()
+            });
+            hideModal(createShowModal);
+            createShowForm.reset();
+        }
+    });
+
+    backToShowsBtn.addEventListener('click', () => {
+        appContainer.classList.add('hidden');
+        showSelectionScreen.classList.remove('hidden');
+        if (ticketsListener) {
+            ticketsListener(); // Detach listener
+        }
+        selectedShowId = null;
+        tickets = [];
+        updateAllUI();
+    });
+
+    showsListDiv.addEventListener('click', (e) => {
+        const showButton = e.target.closest('.show-button');
+        const editButton = e.target.closest('.edit-show-btn');
+        const deleteButton = e.target.closest('.delete-show-btn');
+
+        if (showButton) {
+            selectedShowId = showButton.dataset.id;
+            passwordModal.querySelector('h3').textContent = `Access "${shows[selectedShowId].name}"`;
+            passwordModal.querySelector('p').textContent = 'Please enter the password for this show to continue.';
+            passwordInput.value = '';
+            passwordError.classList.add('hidden');
+            showModal(passwordModal);
+            passwordInput.focus();
+        } else if (editButton) {
+            targetShowId = editButton.dataset.id;
+            adminAction = 'edit';
+            showModal(adminPasswordModal);
+            adminPasswordInput.focus();
+        } else if (deleteButton) {
+            targetShowId = deleteButton.dataset.id;
+            adminAction = 'delete';
+            showModal(adminPasswordModal);
+            adminPasswordInput.focus();
+        }
+    });
+
+    function selectShow(showId) {
+        selectedShowId = showId;
+        appTitle.textContent = shows[showId].name;
+        showSelectionScreen.classList.add('hidden');
+        appContainer.classList.remove('hidden');
+        setActiveTab('scanner'); // Default to scanner tab
+        listenForTickets(showId);
+    }
+    
+    function listenForTickets(showId) {
+        if(ticketsListener) ticketsListener(); // Detach previous listener
+
+        ticketsRef = ref(db, `shows/${showId}/tickets`);
+        ticketsListener = onValue(ticketsRef, (snapshot) => {
+            const data = snapshot.val();
+            tickets = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+            updateAllUI();
+        });
+    }
+
+    function renderShowsList() {
+        showsListDiv.innerHTML = '';
+        if (Object.keys(shows).length === 0) {
+            showsListDiv.innerHTML = '<p class="text-gray-500 text-center">No shows created yet. Create one to get started!</p>';
+            return;
+        }
+
+        const sortedShows = Object.keys(shows).map(key => ({ id: key, ...shows[key]})).sort((a,b) => b.createdAt - a.createdAt);
+
+        sortedShows.forEach(show => {
+            const showEl = document.createElement('div');
+            showEl.className = "show-item flex items-center justify-between p-4 bg-gray-50 hover:bg-indigo-100 rounded-lg border border-gray-200 transition-colors";
+            
+            showEl.innerHTML = `
+                <button class="show-button text-left flex-grow" data-id="${show.id}">
+                    <h3 class="font-bold text-lg text-gray-800">${show.name}</h3>
+                    <p class="text-sm text-gray-500">Created: ${new Date(show.createdAt).toLocaleDateString()}</p>
+                </button>
+                <div class="flex items-center space-x-2">
+                    <button data-id="${show.id}" class="edit-show-btn p-2 rounded-md hover:bg-gray-300 text-gray-500" title="Edit Show">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/></svg>
+                    </button>
+                    <button data-id="${show.id}" class="delete-show-btn p-2 rounded-md hover:bg-red-200 text-red-500" title="Delete Show">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                    </button>
+                </div>
+            `;
+            showsListDiv.appendChild(showEl);
+        });
+    }
+    
+    adminPasswordForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const password = adminPasswordInput.value;
+        if (password === 'admin0426') {
+            adminPasswordInput.value = '';
+            adminPasswordError.classList.add('hidden');
+            hideModal(adminPasswordModal);
+
+            if (adminAction === 'create') {
+                showModal(createShowModal);
+                showNameInput.focus();
+            } else if (adminAction === 'edit') {
+                const show = shows[targetShowId];
+                editShowNameInput.value = show.name;
+                editShowPasswordInput.value = '';
+                showModal(editShowModal);
+                editShowNameInput.focus();
+            } else if (adminAction === 'delete') {
+                const show = shows[targetShowId];
+                document.getElementById('modal-title').textContent = `Delete Show: ${show.name}`;
+                document.getElementById('modal-message').textContent = `Are you sure you want to permanently delete this show and all of its tickets? This action cannot be undone.`;
+                showModal(modal);
+                confirmCallback = async () => {
+                    await set(ref(db, `shows/${targetShowId}`), null);
+                    hideModal(modal);
+                    targetShowId = null;
+                };
+            }
+        } else {
+            adminPasswordError.classList.remove('hidden');
+        }
+    });
+
+    editShowForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newName = editShowNameInput.value;
+        const newPassword = editShowPasswordInput.value;
+        
+        const updates = { name: newName };
+        if (newPassword) {
+            updates.password = newPassword;
+        }
+
+        await update(ref(db, `shows/${targetShowId}`), updates);
+        hideModal(editShowModal);
+        targetShowId = null;
+    });
+
+    adminPasswordCancelBtn.addEventListener('click', () => hideModal(adminPasswordModal));
+    editShowCancelBtn.addEventListener('click', () => hideModal(editShowModal));
     
     // --- FIREBASE INITIALIZATION ---
     async function initFirebase() {
@@ -623,16 +921,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     sessionInfo.textContent = `Session ID: ${user.uid.substring(0, 8)}...`;
                     
                     const dbPath = (typeof __app_id !== 'undefined') 
-                        ? `/artifacts/${__app_id}/public/data/tickets` 
-                        : `/tickets`;
+                        ? `/artifacts/${__app_id}/public/data/shows` 
+                        : `/shows`;
                     
-                    ticketsRef = ref(db, dbPath);
+                    showsRef = ref(db, dbPath);
 
-                    onValue(ticketsRef, (snapshot) => {
+                    onValue(showsRef, (snapshot) => {
                         showDbError(false);
-                        const data = snapshot.val();
-                        tickets = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-                        updateAllUI();
+                        shows = snapshot.val() || {};
+                        renderShowsList();
+                        showSelectionScreen.classList.remove('hidden');
                         loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
                     }, (error) => {
                         console.error("Firebase Realtime Database read failed:", error);
@@ -661,11 +959,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- INITIALIZATION ---
     html5QrCode = new Html5Qrcode("reader");
-    setActiveTab('scanner');
     document.getElementById('copyright-year').textContent = new Date().getFullYear();
     initFirebase();
 });
 </script>
 </body>
 </html>
-
