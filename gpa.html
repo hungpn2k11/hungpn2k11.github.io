@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weighted GPA Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-blue-700">Weighted GPA Calculator</h1>
+            <p class="text-lg text-gray-600 mt-2">Calculate your GPA based on your provided custom grading scale.</p>
+        </header>
+
+        <!-- Student Name Input (NEW - Outside the main grid for report context) -->
+        <div class="space-y-6 mb-8 p-4 md:p-0">
+            <div>
+                <label for="student-name" class="block text-sm font-medium text-gray-700 mb-1">Student Name (Optional for report)</label>
+                <input type="text" id="student-name" placeholder="Enter your name for the report"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Input Panel -->
+            <div id="input-panel" class="card bg-white p-6 rounded-xl border border-gray-200 h-fit">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">Add a Class</h2>
+
+                <div class="space-y-4">
+                    
+                    <!-- Class Name Input (NEW) -->
+                    <div>
+                        <label for="class-name" class="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
+                        <input type="text" id="class-name" placeholder="e.g., AP U.S. History"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                    </div>
+
+                    <!-- Grade Input -->
+                    <div>
+                        <label for="grade-percent" class="block text-sm font-medium text-gray-700 mb-1">Grade Percentage (%)</label>
+                        <input type="number" id="grade-percent" min="0" max="100" step="0.1" placeholder="e.g., 91.5"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                        <p id="grade-error" class="text-red-500 text-sm mt-1 hidden">Please enter a valid percentage (0-100).</p>
+                    </div>
+
+                    <!-- Course Level Select -->
+                    <div>
+                        <label for="course-level" class="block text-sm font-medium text-gray-700 mb-1">Course Level</label>
+                        <select id="course-level"
+                                class="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                            <option value="cp">College Prep/Exploratory</option>
+                            <option value="honors">Honors</option>
+                            <option value="ap">AP Courses</option>
+                        </select>
+                    </div>
+
+                    <!-- Add Button (Now triggered by Enter key) -->
+                    <button id="add-class-btn"
+                            class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition duration-200 shadow-md mb-2">
+                        Add Class
+                    </button>
+                    
+                    <!-- Download Button -->
+                    <button id="download-data-btn"
+                            class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition duration-200 shadow-md">
+                        Download Data (.csv)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results and Class List Panel -->
+            <div class="space-y-6">
+                <!-- GPA Result Card -->
+                <div class="card bg-blue-100 p-6 rounded-xl border-2 border-blue-400 text-center">
+                    <h2 class="text-xl font-medium text-blue-800">Your Calculated Weighted GPA</h2>
+                    <p id="gpa-result" class="text-6xl font-extrabold text-blue-700 mt-2">--</p>
+                    <p class="text-sm text-blue-600 mt-1">Based on <span id="class-count" class="font-semibold">0</span> classes</p>
+                </div>
+
+                <!-- Class List Card -->
+                <div class="card bg-white p-6 rounded-xl border border-gray-200">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4 border-b pb-3">Classes Entered</h2>
+                    <!-- FIX: Added max-h-96 and overflow-y-auto for scrollable list -->
+                    <div id="classes-list" class="space-y-3 max-h-96 overflow-y-auto">
+                        <p id="empty-message" class="text-gray-500 italic text-center">No classes added yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GPA Calculation Logic ---
+
+        // The grading scale derived directly from the user's provided image
+        const GRADING_SCALE = [
+            // { max: Upper bound of % range, cp: College Prep, honors: Honors, ap: AP Courses }
+            { max: 100, letter: "A+", cp: 4.3, honors: 4.8, ap: 5.3 },
+            { max: 96, letter: "A", cp: 4.0, honors: 4.5, ap: 5.0 },
+            { max: 92, letter: "A-", cp: 3.7, honors: 4.2, ap: 4.7 },
+            { max: 89, letter: "B+", cp: 3.3, honors: 3.8, ap: 4.3 },
+            { max: 86, letter: "B", cp: 3.0, honors: 3.5, ap: 4.0 },
+            { max: 82, letter: "B-", cp: 2.7, honors: 3.2, ap: 3.7 },
+            { max: 79, letter: "C+", cp: 2.3, honors: 2.8, ap: 3.3 },
+            { max: 76, letter: "C", cp: 2.0, honors: 2.5, ap: 3.0 },
+            { max: 72, letter: "C-", cp: 1.7, honors: 2.2, ap: 2.7 },
+            { max: 69, letter: "D+", cp: 1.3, honors: 1.8, ap: 2.3 },
+            { max: 66, letter: "D", cp: 1.0, honors: 1.5, ap: 2.0 },
+            { max: 62, letter: "D-", cp: 0.7, honors: 1.2, ap: 1.7 },
+            { max: 59, letter: "F", cp: 0.0, honors: 0.0, ap: 0.0 } // 59 & below
+            // Note: 'I' (Incomplete) is not handled by the percentage input, so it defaults to 0.0 if grade is 59 or less.
+        ];
+
+        // Global array to store all entered classes
+        let classes = [];
+
+        /**
+         * Determines the letter grade and weighted GPA points for a given percentage and course level.
+         * @param {number} percent - The percentage grade (0-100).
+         * @param {string} level - The course level key ('cp', 'honors', or 'ap').
+         * @returns {{letter: string, points: number}} An object containing the letter grade and weighted points.
+         */
+        function getGradeInfo(percent, level) {
+            let letter = "F";
+            let points = 0.0;
+
+            if (percent < 0 || percent > 100) {
+                 return { letter: 'N/A', points: 0.0 }; // Should be caught by validation
+            }
+
+            // Iterate through the grading scale from highest to lowest
+            for (const entry of GRADING_SCALE) {
+                // Determine the inclusive lower bound for the current range
+                let lowerBound;
+                if (entry.letter === "A+") lowerBound = 97;
+                else if (entry.letter === "A") lowerBound = 93;
+                else if (entry.letter === "A-") lowerBound = 90;
+                else if (entry.letter === "B+") lowerBound = 87;
+                else if (entry.letter === "B") lowerBound = 83;
+                else if (entry.letter === "B-") lowerBound = 80;
+                else if (entry.letter === "C+") lowerBound = 77;
+                else if (entry.letter === "C") lowerBound = 73;
+                else if (entry.letter === "C-") lowerBound = 70;
+                else if (entry.letter === "D+") lowerBound = 67;
+                else if (entry.letter === "D") lowerBound = 63;
+                else if (entry.letter === "D-") lowerBound = 60;
+                else lowerBound = 0; // F (59 & below)
+
+                // If the percentage falls into this range, set the grade info and stop
+                if (percent >= lowerBound) {
+                    letter = entry.letter;
+                    points = entry[level];
+                    break;
+                }
+            }
+
+            return { letter, points };
+        }
+
+        /**
+         * Calculates the overall Weighted GPA.
+         * GPA = (Sum of all Class Points) / (Number of Classes)
+         */
+        function calculateWeightedGPA() {
+            if (classes.length === 0) {
+                return 0.0;
+            }
+
+            const totalPoints = classes.reduce((sum, cls) => sum + cls.points, 0);
+            return totalPoints / classes.length;
+        }
+
+        /**
+         * Renders the list of classes and updates the GPA display.
+         */
+        function renderUI() {
+            const listElement = document.getElementById('classes-list');
+            const gpaResultElement = document.getElementById('gpa-result');
+            const classCountElement = document.getElementById('class-count');
+            const emptyMessageElement = document.getElementById('empty-message');
+
+            // 1. Update GPA Result
+            const gpa = calculateWeightedGPA();
+            if (gpaResultElement) gpaResultElement.textContent = gpa.toFixed(3);
+            if (classCountElement) classCountElement.textContent = classes.length;
+
+            // 2. Render Class List
+            if (listElement) listElement.innerHTML = ''; // Clear existing list
+
+            if (classes.length === 0) {
+                // FIX: Added null check for emptyMessageElement
+                if (emptyMessageElement) emptyMessageElement.classList.remove('hidden');
+                return;
+            }
+            // FIX: Added null check for emptyMessageElement
+            if (emptyMessageElement) emptyMessageElement.classList.add('hidden');
+
+
+            classes.forEach((cls, index) => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg border';
+                // Updated innerHTML to display class name
+                item.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <p class="text-base font-bold text-gray-800">${cls.className || 'Unnamed Class'}</p>
+                        <p class="text-sm text-gray-600">${cls.percent}% (${cls.letter}) - ${cls.levelDisplay}</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-lg font-bold text-blue-600">${cls.points.toFixed(3)}</span>
+                        <button onclick="removeClass(${index})" class="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150" title="Remove Class">
+                            <!-- Trash Icon (Lucide-react equivalent) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                `;
+                if (listElement) listElement.appendChild(item);
+            });
+        }
+
+        /**
+         * Event handler to add a new class.
+         */
+        function addClass() {
+            const nameInput = document.getElementById('class-name'); // NEW
+            const percentInput = document.getElementById('grade-percent');
+            const levelSelect = document.getElementById('course-level');
+            const gradeError = document.getElementById('grade-error');
+
+            const className = nameInput ? (nameInput.value.trim() || 'Unnamed Class') : 'Unnamed Class'; // NEW
+            const percent = parseFloat(percentInput.value);
+            const level = levelSelect ? levelSelect.value : 'cp';
+            // Check if levelSelect exists before accessing options
+            const levelDisplay = levelSelect ? levelSelect.options[levelSelect.selectedIndex].text : 'N/A';
+
+            // Simple validation
+            if (isNaN(percent) || percent < 0 || percent > 100) {
+                // FIX: Added null check for gradeError and percentInput
+                if (gradeError) gradeError.classList.remove('hidden');
+                if (percentInput) percentInput.focus();
+                return;
+            }
+            // FIX: Added null check for gradeError
+            if (gradeError) gradeError.classList.add('hidden');
+
+            const { letter, points } = getGradeInfo(percent, level);
+
+            const newClass = {
+                className: className, // NEW
+                percent: percent.toFixed(1), // Store with one decimal for display
+                level: level,
+                levelDisplay: levelDisplay,
+                letter: letter,
+                points: points
+            };
+
+            classes.push(newClass);
+
+            // Reset form inputs
+            if (nameInput) nameInput.value = ''; // NEW
+            if (percentInput) percentInput.value = '';
+            if (levelSelect) levelSelect.value = 'cp';
+            if (nameInput) nameInput.focus(); // Focus back to the class name input for quick entry
+
+            // Update UI
+            renderUI();
+        }
+
+        /**
+         * Removes a class from the list. Made available globally for button click.
+         * @param {number} index - The index of the class to remove.
+         */
+        window.removeClass = function(index) {
+            classes.splice(index, 1);
+            renderUI();
+        }
+
+        /**
+         * Creates a CSV file containing the entered classes and the final GPA,
+         * and triggers a download.
+         */
+        function downloadData() {
+            if (classes.length === 0) {
+                console.log('[WARNING]: No data to download. Please add at least one class.');
+                return;
+            }
+
+            const gpa = calculateWeightedGPA().toFixed(3);
+            const classCount = classes.length;
+            const date = new Date().toISOString().slice(0, 10);
+            
+            const studentNameInput = document.getElementById('student-name'); // NEW
+            const studentName = studentNameInput ? studentNameInput.value.trim() : 'Student';
+            
+            // Create a safe filename, replacing non-alphanumeric characters with underscores
+            const filenameSafeName = studentName.replace(/[^a-zA-Z0-9]/g, '_') || 'GPA_Report';
+            const filename = `${filenameSafeName}_GPA_Report_${date}.csv`;
+
+            // CSV Header: General Report Info
+            let csvContent = "Student Name,Report Generated,Weighted GPA,Total Classes\n"; // ADDED STUDENT NAME
+            csvContent += `"${studentName}",${date},${gpa},${classCount}\n\n`; // ADDED STUDENT NAME
+            
+            // CSV Header: Class Data
+            csvContent += "Class Name,Grade Percentage (%),Course Level,Letter Grade,GPA Points\n"; // ADDED CLASS NAME
+
+            // Data Rows
+            classes.forEach(cls => {
+                // Formatting data for CSV, ensuring class name is quoted to handle commas
+                csvContent += `"${cls.className}",${cls.percent},"${cls.levelDisplay}",${cls.letter},${cls.points.toFixed(3)}\n`; // ADDED CLASS NAME
+            });
+
+            // Create a Blob and a temporary link to trigger the download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+
+            if (link.download !== undefined) { // feature detection
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                // Trigger download without showing the link
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // --- Initialization ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const addButton = document.getElementById('add-class-btn');
+            if (addButton) {
+                addButton.addEventListener('click', addClass);
+            }
+
+            // Wire up the new download button
+            const downloadButton = document.getElementById('download-data-btn');
+            if (downloadButton) {
+                downloadButton.addEventListener('click', downloadData);
+            }
+
+
+            // Keyboard shortcut for quick entry
+            document.addEventListener('keydown', (e) => {
+                // Check Enter keypress when focused on any class-adding input field
+                const nameInput = document.getElementById('class-name'); // NEW
+                const percentInput = document.getElementById('grade-percent');
+                const levelSelect = document.getElementById('course-level');
+
+                if (e.key === 'Enter' && (document.activeElement === nameInput || document.activeElement === percentInput || document.activeElement === levelSelect)) {
+                    e.preventDefault();
+                    addClass(); // Call the function to add the class
+                }
+            });
+
+            // Initial render
+            renderUI();
+        });
+
+    </script>
+</body>
+</html>
