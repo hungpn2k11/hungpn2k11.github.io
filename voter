@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote Now!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .result-bar-fill {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div id="app" class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-lg p-8">
+        
+        <div id="status-view" class="hidden text-center">
+             <h1 id="status-title" class="text-3xl font-bold text-gray-800 mb-2"></h1>
+             <p id="status-message" class="text-gray-500"></p>
+        </div>
+
+        <div id="vote-view" class="hidden">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2 text-center">Cast Your Vote</h1>
+            <p class="text-gray-500 mb-8 text-center">Click on an option below to vote.</p>
+            <div id="options-container" class="space-y-4">
+                <!-- Voting options will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <div id="voted-message" class="hidden text-center">
+            <div class="p-4 bg-green-100 text-green-700 rounded-lg">
+                <p class="font-semibold">Thank you for voting!</p>
+                <p class="text-sm">Your vote has been successfully recorded.</p>
+            </div>
+            <p class="text-gray-500 mt-4 text-sm">Results will be shown here once they are published by the manager.</p>
+        </div>
+        
+        <div id="results-view" class="hidden">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2 text-center">Poll Results</h1>
+            <p class="text-gray-500 mb-6 text-center">Here are the current standings.</p>
+            <div id="voter-results-container" class="space-y-4">
+                <!-- Results will be shown here -->
+            </div>
+        </div>
+
+        <div id="ballots-view" class="hidden">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2 text-center">Live Ballots</h1>
+            <p class="text-gray-500 mb-6 text-center">Showing individual votes as they come in.</p>
+            <ul id="ballots-list" class="space-y-2 text-sm text-gray-600 max-h-60 overflow-y-auto pr-2">
+                <!-- Ballots will be shown here -->
+            </ul>
+        </div>
+        
+        <div class="mt-8 text-xs text-gray-400 text-center">
+            <p>Powered by a real-time database.</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, getDoc, doc, updateDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyAbTL-yn9AjEdMXTREw_cs2YXtmueSiij8",
+          authDomain: "votesystem-41be1.firebaseapp.com",
+          projectId: "votesystem-41be1",
+          storageBucket: "votesystem-41be1.appspot.com",
+          messagingSenderId: "920140116787",
+          appId: "1:920140116787:web:e6692cbf735254c2fc4446",
+          measurementId: "G-ZM6PDF66FH"
+        };
+        
+        const statusView = document.getElementById('status-view');
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const optionsContainer = document.getElementById('options-container');
+        const voteView = document.getElementById('vote-view');
+        const votedMessage = document.getElementById('voted-message');
+        const resultsView = document.getElementById('results-view');
+        const voterResultsContainer = document.getElementById('voter-results-container');
+        const ballotsView = document.getElementById('ballots-view');
+        const ballotsList = document.getElementById('ballots-list');
+
+        const POLL_ID = 'main_poll';
+        let auth; // To hold the auth instance
+
+        function showView(viewToShow) {
+            [statusView, voteView, votedMessage, resultsView, ballotsView].forEach(view => {
+                if (view.id === viewToShow) {
+                    view.classList.remove('hidden');
+                } else {
+                    view.classList.add('hidden');
+                }
+            });
+        }
+
+        async function main() {
+            let db;
+            try {
+                showView('status-view');
+                statusTitle.textContent = "Connecting...";
+                statusMessage.textContent = "Please wait while we connect to the voting service.";
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app); 
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                statusTitle.textContent = "Connection Error";
+                statusMessage.textContent = "Could not connect to the voting service.";
+                return;
+            }
+
+            const pollRef = doc(db, "polls", POLL_ID);
+            onSnapshot(pollRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const pollData = docSnap.data();
+                    const serverSessionId = pollData.pollSessionId;
+                    const votedSessionId = localStorage.getItem('votedPollSessionId');
+                    
+                    if (serverSessionId && serverSessionId !== votedSessionId) {
+                        localStorage.removeItem('hasVoted');
+                        localStorage.removeItem('votedPollSessionId');
+                    }
+
+                    const hasVoted = localStorage.getItem('hasVoted') === 'true';
+                    const publishMode = pollData.publishMode || 'hidden';
+                    const pollStatus = pollData.pollStatus || 'draft';
+
+                    switch (pollStatus) {
+                        case 'draft':
+                            showView('status-view');
+                            statusTitle.textContent = "Poll Not Yet Open";
+                            statusMessage.textContent = "The manager is preparing the poll. Please check back soon!";
+                            break;
+                        
+                        case 'closed':
+                            showView('status-view');
+                            statusTitle.textContent = "Poll Closed";
+                            statusMessage.textContent = "Voting has ended. Thank you for your participation.";
+                            // Optionally, still show results if they are published even if poll is closed
+                             if (publishMode === 'results') {
+                                showResultsView(pollData.options || []);
+                             } else if (publishMode === 'ballots') {
+                                showBallotsView(pollData.ballots || []);
+                             }
+                            break;
+
+                        case 'open':
+                            if (hasVoted) {
+                                switch (publishMode) {
+                                    case 'results':
+                                        showResultsView(pollData.options || []);
+                                        break;
+                                    case 'ballots':
+                                        showBallotsView(pollData.ballots || []);
+                                        break;
+                                    case 'hidden':
+                                    default:
+                                        showVotedMessage();
+                                        break;
+                                }
+                            } else {
+                                showVotingOptions(pollData.options || [], serverSessionId, db);
+                            }
+                            break;
+                    }
+
+                } else {
+                    showView('status-view');
+                    statusTitle.textContent = "Waiting for Poll";
+                    statusMessage.textContent = "The poll has not been set up by the manager yet.";
+                }
+            }, (error) => {
+                console.error("Error fetching poll:", error);
+                showView('status-view');
+                statusTitle.textContent = "Error";
+                statusMessage.textContent = "Failed to load poll data.";
+            });
+        }
+        
+        async function vote(optionId, currentSessionId, db) {
+            if (localStorage.getItem('hasVoted') === 'true') {
+                return;
+            }
+
+            const pollRef = doc(db, "polls", POLL_ID);
+            try {
+                const pollData = (await getDoc(pollRef)).data();
+                const options = pollData.options || [];
+                const optionIndex = options.findIndex(opt => opt.id === optionId);
+
+                if (optionIndex !== -1) {
+                    options[optionIndex].votes += 1;
+                    
+                    const voterId = auth.currentUser ? auth.currentUser.uid.slice(-6) : 'anon';
+                    const newBallot = {
+                        voterId: `voter-${voterId}`,
+                        optionName: options[optionIndex].name,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    await updateDoc(pollRef, { 
+                        options: options,
+                        ballots: arrayUnion(newBallot)
+                    });
+                    
+                    localStorage.setItem('hasVoted', 'true');
+                    localStorage.setItem('votedPollSessionId', currentSessionId);
+
+                    const updatedPollData = (await getDoc(pollRef)).data();
+                    const publishMode = updatedPollData.publishMode || 'hidden';
+                    
+                    switch (publishMode) {
+                        case 'results':
+                            showResultsView(updatedPollData.options);
+                            break;
+                        case 'ballots':
+                            showBallotsView(updatedPollData.ballots);
+                            break;
+                        default:
+                            showVotedMessage();
+                            break;
+                    }
+                }
+            } catch (error) {
+                console.error("Error casting vote:", error);
+                alert("There was an error casting your vote.");
+            }
+        }
+        
+        function showVotingOptions(options, serverSessionId, db) {
+            showView('vote-view');
+            optionsContainer.innerHTML = '';
+
+            if (options.length === 0) {
+                optionsContainer.innerHTML = `<p class="text-gray-500 text-center">No voting options are available yet.</p>`;
+                return;
+            }
+            options.forEach((option) => {
+                const button = document.createElement('button');
+                button.textContent = option.name;
+                button.className = "w-full bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105";
+                button.onclick = () => vote(option.id, serverSessionId, db);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function showVotedMessage() {
+            showView('voted-message');
+        }
+
+        function showResultsView(options) {
+            showView('results-view');
+            voterResultsContainer.innerHTML = '';
+            
+            const totalVotes = options.reduce((sum, opt) => sum + opt.votes, 0);
+
+            if (options.length === 0) {
+                voterResultsContainer.innerHTML = `<p class="text-gray-500 text-center">No options available.</p>`;
+                return;
+            }
+            
+            options.sort((a, b) => b.votes - a.votes).forEach(option => {
+                const percentage = totalVotes === 0 ? 0 : (option.votes / totalVotes) * 100;
+                voterResultsContainer.innerHTML += `
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-semibold text-gray-700">${option.name}</span>
+                            <span class="text-sm font-medium text-gray-600">${option.votes} Vote(s)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                            <div class="bg-blue-500 h-4 rounded-full result-bar-fill" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function showBallotsView(ballots) {
+            showView('ballots-view');
+            ballotsList.innerHTML = '';
+            
+            if (ballots.length === 0) {
+                ballotsList.innerHTML = `<li class="text-gray-500">No ballots have been cast yet.</li>`;
+                return;
+            }
+            
+            [...ballots].reverse().forEach(ballot => {
+                const li = document.createElement('li');
+                li.className = 'p-2 bg-gray-50 rounded-md';
+                li.innerHTML = `<strong>${ballot.voterId}</strong> voted for <strong>${ballot.optionName}</strong>`;
+                ballotsList.appendChild(li);
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>
+
