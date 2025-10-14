@@ -25,7 +25,21 @@
     </style>
 </head>
 <body class="bg-gray-100">
-    <div id="app" class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+    <!-- Password Overlay -->
+    <div id="password-overlay" class="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
+        <div class="w-full max-w-sm bg-white p-8 rounded-2xl shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Admin Access</h2>
+            <p class="text-center text-gray-600 mb-6">Please enter the password to continue.</p>
+            <div class="space-y-4">
+                <input type="password" id="password-input" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="Password">
+                <button id="password-btn" class="w-full bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition active:scale-95">Enter</button>
+                <p id="password-error" class="text-red-500 text-sm text-center h-4"></p>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="app" class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8 hidden">
         <!-- Initial Loading State -->
         <div id="loading-state" class="text-center p-8 bg-white rounded-2xl shadow-lg">
             <h1 class="text-2xl font-bold text-gray-700">Connecting to Dashboard...</h1>
@@ -128,6 +142,14 @@
           measurementId: "G-ZM6PDF66FH"
         };
         
+        // --- Password Elements ---
+        const passwordOverlay = document.getElementById('password-overlay');
+        const passwordInput = document.getElementById('password-input');
+        const passwordBtn = document.getElementById('password-btn');
+        const passwordError = document.getElementById('password-error');
+        const appContainer = document.getElementById('app');
+        const ADMIN_PASSWORD = 'hung';
+
         // --- DOM Elements ---
         const manageOptionsSection = document.getElementById('manage-options-section');
         const loadingState = document.getElementById('loading-state');
@@ -155,6 +177,27 @@
         let db;
         const POLL_ID = 'main_poll';
         let pollRef;
+        
+        // --- Password Logic ---
+        function checkPassword() {
+            if (passwordInput.value === ADMIN_PASSWORD) {
+                passwordOverlay.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                initialize();
+            } else {
+                passwordError.textContent = 'Incorrect password.';
+                passwordInput.value = '';
+                setTimeout(() => passwordError.textContent = '', 2000);
+            }
+        }
+        
+        passwordBtn.addEventListener('click', checkPassword);
+        passwordInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
 
         async function initialize() {
             try {
@@ -176,8 +219,6 @@
                 configPanel.classList.remove('hidden');
             }
         }
-        
-        initialize();
 
         // --- Core Logic ---
         async function getOrCreatePoll() {
