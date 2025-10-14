@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Hung's Website</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            text-align: center;
+            padding: 50px;
+        }
+
+        h1 {
+            color: #1e90ff;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        .button-link {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 25px;
+            background-color: #1e90ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .button-link:hover {
+            background-color: #005cbf;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vote system</h1>
+    <p>Click any of these role:</p>
+    
+    <a class="button-link" href="https://hungpn2k11.github.io/ticketsystem.html" target="_blank">Ticket System</a>
+    <a class="button-link" href="https://hungpn2k11.github.io/gpacalculator.html" target="_blank">GPA Calculator</a>
+</body>
+</html>
