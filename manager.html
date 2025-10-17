@@ -25,16 +25,18 @@
     </style>
 </head>
 <body class="bg-gray-100">
-<div class="absolute top-4 left-4">
-  <a href="https://hungpn2k11.github.io/votesystem.html" class="group flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-gray-700 transform hover:-translate-x-1 transition-all duration-300">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-    </svg>
-    <span>Back to Vote Menu</span>
-  </a>
-</div>
     <!-- Password Overlay -->
-    <div id="password-overlay" class="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
+    <div id="password-overlay" class="fixed inset-0 bg-gray-200 flex items-center justify-center z-40">
+        <!-- Back Button for Admin Access screen -->
+        <div class="absolute top-4 left-4">
+          <a href="https://hungpn2k11.github.io/votesystem.html" class="group flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-gray-700 transform hover:-translate-x-1 transition-all duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            <span>Back to Vote Menu</span>
+          </a>
+        </div>
+
         <div class="w-full max-w-sm bg-white p-8 rounded-2xl shadow-lg">
             <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Admin Access</h2>
             <p class="text-center text-gray-600 mb-6">Please enter the password to continue.</p>
@@ -69,7 +71,15 @@
 
         <!-- Main Dashboard Content -->
         <div id="main-content" class="hidden">
-            <h1 class="text-4xl font-bold text-gray-800 mb-6">Voting Dashboard</h1>
+            <div class="flex items-center gap-4 mb-6">
+                <button id="logout-btn" class="group flex-shrink-0 flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-gray-700 transform hover:-translate-x-1 transition-all duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    <span>Logout</span>
+                </button>
+                <h1 class="text-4xl font-bold text-gray-800">Voting Dashboard</h1>
+            </div>
     
             <!-- Results Section -->
             <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
@@ -159,6 +169,7 @@
         const ADMIN_PASSWORD = 'hung';
 
         // --- DOM Elements ---
+        const logoutBtn = document.getElementById('logout-btn');
         const manageOptionsSection = document.getElementById('manage-options-section');
         const loadingState = document.getElementById('loading-state');
         const mainContent = document.getElementById('main-content');
@@ -186,6 +197,15 @@
         const POLL_ID = 'main_poll';
         let pollRef;
         
+        // --- Logout Logic ---
+        function handleLogout() {
+            appContainer.classList.add('hidden');
+            passwordOverlay.classList.remove('hidden');
+            passwordInput.value = '';
+            passwordError.textContent = '';
+        }
+        logoutBtn.addEventListener('click', handleLogout);
+
         // --- Password Logic ---
         function checkPassword() {
             if (passwordInput.value === ADMIN_PASSWORD) {
@@ -469,4 +489,6 @@
     </script>
 </body>
 </html>
+
+
 
