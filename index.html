@@ -3,50 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Hung's Website</title>
+    <title>Hung's Portfolio</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a modern font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Applying the Inter font to the whole page */
         body {
-            font-family: Arial, sans-serif;
-            background: #f0f4f8;
-            color: #333;
-            text-align: center;
-            padding: 50px;
-        }
-
-        h1 {
-            color: #1e90ff;
-            margin-bottom: 20px;
-        }
-
-        p {
-            font-size: 18px;
-            margin-bottom: 30px;
-        }
-
-        .button-link {
-            display: inline-block;
-            margin: 10px;
-            padding: 15px 25px;
-            background-color: #1e90ff;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-
-        .button-link:hover {
-            background-color: #005cbf;
+            font-family: 'Inter', sans-serif;
         }
     </style>
 </head>
-<body>
-    <h1>Welcome to Hung's Website</h1>
-    <p>Click any of these projects to see them:</p>
-    
-    <a class="button-link" href="https://hungpn2k11.github.io/ticketsystem.html" target="_blank">Ticket System</a>
-    <a class="button-link" href="https://hungpn2k11.github.io/gpacalculator.html" target="_blank">GPA Calculator</a>
-    <a class="button-link" href="https://hungpn2k11.github.io/votesystem.html" target="_blank">Vote System</a>
-    <a class="button-link" href="https://hungpn2k11.github.io/communityservicelog.html" target="_blank">Community Service Log</a>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main content card -->
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-2xl text-center transform hover:scale-[1.01] transition-transform duration-500">
+        
+        <!-- Header Section -->
+        <header class="mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent mb-2">
+                Welcome to Hung's Portfolio
+            </h1>
+            <p class="text-gray-600 dark:text-gray-300 text-lg">
+                Here are some of my projects. Click any of them to learn more.
+            </p>
+        </header>
+
+        <!-- Project Links Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            
+            <!-- Ticket System Link -->
+            <a href="https://hungpn2k11.github.io/ticketsystem.html" target="_blank" class="group flex items-center justify-center gap-3 bg-blue-500 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:bg-blue-600 transform hover:-translate-y-1 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-300 group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h3m-3-4h3m0 0h3m-3 4h3m0 0h3m-3-4h3m0 0h3M3 12h18M3 12a2 2 0 01-2-2V7a2 2 0 012-2h18a2 2 0 012 2v3a2 2 0 01-2 2M3 12a2 2 0 00-2 2v3a2 2 0 002 2h18a2 2 0 002-2v-3a2 2 0 00-2-2" />
+                </svg>
+                <span>Ticket System</span>
+            </a>
+            
+            <!-- GPA Calculator Link -->
+            <a href="https://hungpn2k11.github.io/gpacalculator.html" target="_blank" class="group flex items-center justify-center gap-3 bg-green-500 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:bg-green-600 transform hover:-translate-y-1 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-300 group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h3m-3-10h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M12 17h.01M15 14h.01M15 17h.01M5 3a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2H5z" />
+                </svg>
+                <span>GPA Calculator</span>
+            </a>
+
+            <!-- Vote System Link -->
+            <a href="https://hungpn2k11.github.io/votesystem.html" target="_blank" class="group flex items-center justify-center gap-3 bg-purple-500 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:bg-purple-600 transform hover:-translate-y-1 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-300 group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Vote System</span>
+            </a>
+            
+            <!-- Community Service Log Link -->
+            <a href="https://hungpn2k11.github.io/communityservicelog.html" target="_blank" class="group flex items-center justify-center gap-3 bg-yellow-500 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:bg-yellow-600 transform hover:-translate-y-1 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-300 group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span>Community Service Log</span>
+            </a>
+        </div>
+    </div>
+
 </body>
 </html>
