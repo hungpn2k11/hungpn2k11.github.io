@@ -17,21 +17,29 @@
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
-    <div class="absolute top-4 left-4">
-      <a href="https://hungpn2k11.github.io/index.html" class="group flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-gray-700 transform hover:-translate-x-1 transition-all duration-300">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        <span>Back to Main Page</span>
-      </a>
-    </div>
-
     <div class="max-w-4xl mx-auto">
-        <!-- Header -->
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-extrabold text-blue-700">Weighted GPA Calculator</h1>
-            <p class="text-lg text-gray-600 mt-2">Calculate your GPA based on your provided custom grading scale.</p>
-        </header>
+        <!-- Header Container - A single responsive container -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 sm:items-center gap-4 mb-10">
+            <!-- Item 1: Back Button -->
+            <div class="sm:justify-self-start">
+                 <a href="https://hungpn2k11.github.io/index.html" class="group w-full sm:w-auto flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-gray-700 transform sm:hover:-translate-x-1 transition-all duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    <span>Back to Main</span>
+                </a>
+            </div>
+        
+            <!-- Item 2: Header Text -->
+            <header class="text-center">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-blue-700">Weighted GPA Calculator</h1>
+                <p class="text-md md:text-lg text-gray-600 mt-2">Calculate your GPA based on your provided custom grading scale.</p>
+            </header>
+        
+            <!-- Item 3: Spacer (This is empty but necessary for centering on sm+ screens) -->
+            <div class="hidden sm:block"></div>
+        </div>
+
 
         <!-- Student Name Input (NEW - Outside the main grid for report context) -->
         <div class="space-y-6 mb-8 p-4 md:p-0">
@@ -380,3 +388,4 @@
     </script>
 </body>
 </html>
+
