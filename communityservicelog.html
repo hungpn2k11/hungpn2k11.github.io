@@ -165,8 +165,12 @@
                         <input type="date" id="service-date" name="service-date" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                      <div>
-                        <label for="hours" class="block text-sm font-medium text-gray-700">Hours Served</label>
-                        <input type="number" id="hours" name="hours" step="0.1" min="0.1" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <label for="time-in" class="block text-sm font-medium text-gray-700">Time In</label>
+                        <input type="time" id="time-in" name="time-in" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                     <div>
+                        <label for="time-out" class="block text-sm font-medium text-gray-700">Time Out</label>
+                        <input type="time" id="time-out" name="time-out" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                      <div>
                         <label for="supervisor-name" class="block text-sm font-medium text-gray-700">Supervisor Name</label>
@@ -181,6 +185,7 @@
                     <label for="description" class="block text-sm font-medium text-gray-700">Description of Service</label>
                     <textarea id="description" name="description" rows="4" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                 </div>
+                <p id="form-error" class="text-sm text-red-600 text-center h-4"></p>
                 <div class="flex justify-end space-x-4">
                     <button type="button" id="cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
                     <button type="submit" id="save-entry-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 w-28 text-center">Save Entry</button>
@@ -334,16 +339,19 @@
         const entryIdInput = document.getElementById('entry-id');
         const deleteModal = document.getElementById('delete-modal');
         let entryToDeleteId = null;
+        const formError = document.getElementById('form-error');
 
         // --- Modal Control Functions (Unchanged) ---
         const openEntryModal = (entry = null) => {
             entryForm.reset();
+            formError.textContent = ''; // Clear any previous errors
             if (entry) {
                 modalTitle.textContent = 'Edit Service Entry';
                 entryIdInput.value = entry.id;
                 document.getElementById('organization').value = entry.organization;
                 document.getElementById('service-date').value = entry.date;
-                document.getElementById('hours').value = entry.hours;
+                document.getElementById('time-in').value = entry.timeIn || '';
+                document.getElementById('time-out').value = entry.timeOut || '';
                 document.getElementById('supervisor-name').value = entry.supervisor;
                 document.getElementById('supervisor-contact').value = entry.contact;
                 document.getElementById('description').value = entry.description;
@@ -379,7 +387,9 @@
                              <span class="flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 text-indigo-600 font-bold text-lg">${entry.hours}h</span>
                              <div>
                                 <p class="text-lg font-semibold text-gray-900">${entry.organization}</p>
-                                <p class="text-sm text-gray-500">${new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                <p class="text-sm text-gray-500">${new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    ${entry.timeIn && entry.timeOut ? `<span class="font-semibold text-gray-600"> &bull; ${entry.timeIn} - ${entry.timeOut}</span>` : ''}
+                                </p>
                              </div>
                         </div>
                         <p class="mt-4 text-gray-600">${entry.description}</p>
@@ -425,18 +435,41 @@
             e.preventDefault();
             const id = entryIdInput.value;
             const saveBtn = document.getElementById('save-entry-btn');
+            formError.textContent = ''; // Clear previous errors
+
+            const timeIn = document.getElementById('time-in').value;
+            const timeOut = document.getElementById('time-out').value;
+            
+            // Basic validation for time
+            if (!timeIn || !timeOut) {
+                formError.textContent = 'Please select both a start and end time.';
+                return;
+            }
+
+            const timeInDate = new Date(`1970-01-01T${timeIn}`);
+            const timeOutDate = new Date(`1970-01-01T${timeOut}`);
+
+            if (timeOutDate <= timeInDate) {
+                formError.textContent = 'End time must be after the start time.';
+                return;
+            }
+
+            const diffMilliseconds = timeOutDate - timeInDate;
+            const calculatedHours = diffMilliseconds / 1000 / 60 / 60;
 
             const entryData = {
                 organization: document.getElementById('organization').value,
                 date: document.getElementById('service-date').value,
-                hours: parseFloat(document.getElementById('hours').value),
+                hours: parseFloat(calculatedHours.toFixed(2)), // Use calculated hours
+                timeIn: timeIn,
+                timeOut: timeOut,
                 supervisor: document.getElementById('supervisor-name').value,
                 contact: document.getElementById('supervisor-contact').value,
                 description: document.getElementById('description').value
             };
 
             if (isNaN(entryData.hours) || entryData.hours <= 0) {
-                alert("Please enter a valid number of hours.");
+                formError.textContent = "Please enter a valid time range.";
                 return;
             }
             
@@ -503,4 +536,3 @@
     </script>
 </body>
 </html>
-
