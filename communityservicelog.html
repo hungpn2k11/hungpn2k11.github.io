@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jsPDF libraries for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -136,6 +139,30 @@
                     </div>
                 </div>
 
+                <!-- PDF Export Section -->
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Export Activity Report</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label for="start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                            <input type="date" id="start-date" name="start-date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="end-date" class="block text-sm font-medium text-gray-700">End Date</label>
+                            <input type="date" id="end-date" name="end-date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div class="sm:col-span-2 md:col-span-1">
+                             <button id="download-pdf-btn" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Download PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                    <p id="pdf-error" class="text-sm text-red-600 mt-2 h-4"></p>
+                </div>
+
                 <!-- Service Entries List -->
                 <div class="bg-white rounded-lg shadow-md">
                      <div class="p-4 border-b border-gray-200">
@@ -235,8 +262,6 @@
         let db, auth;
         let userId = null;
         let serviceLogCollection;
-        // The unsubscribe variable is no longer needed with the new fetch method.
-        // let unsubscribe = null; 
 
         setLogLevel('debug');
 
@@ -279,7 +304,6 @@
                 userId = null;
                 appContainer.classList.add('hidden');
                 authContainer.classList.remove('hidden');
-                // if(unsubscribe) unsubscribe(); // No longer needed
                 renderLog([]); // Clear the log list
                 totalHoursEl.textContent = "0.0";
             }
@@ -408,8 +432,6 @@
         };
 
         // --- Firestore Data Fetching ---
-        // This function now manually fetches the data with getDocs instead of using a real-time listener.
-        // This gives us more control to refresh the data exactly when we need to.
         async function fetchAndRenderLog() {
             if (!serviceLogCollection) return;
             
@@ -427,9 +449,128 @@
             }
         }
         
+        // --- PDF Generation ---
+        const handleDownloadPdf = async () => {
+            const { jsPDF } = window.jspdf;
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
+            const pdfErrorEl = document.getElementById('pdf-error');
+            const downloadBtn = document.getElementById('download-pdf-btn');
+
+            pdfErrorEl.textContent = '';
+            const startDateValue = startDateInput.value;
+            const endDateValue = endDateInput.value;
+            let isDateRangeReport = startDateValue && endDateValue;
+            let useAllData = !startDateValue && !endDateValue;
+
+            // If only one date is filled, it's an error, unless we are downloading all.
+            if (!useAllData && !isDateRangeReport) {
+                 pdfErrorEl.textContent = 'Please provide a complete date range or leave both fields empty for a full report.';
+                 return;
+            }
+            
+            let startDate, endDate;
+
+            if (isDateRangeReport) {
+                endDate = new Date(endDateValue);
+                endDate.setHours(23, 59, 59, 999); 
+                startDate = new Date(startDateValue);
+                startDate.setHours(0, 0, 0, 0);
+
+                if (startDate > endDate) {
+                    pdfErrorEl.textContent = 'Start date cannot be after the end date.';
+                    return;
+                }
+            }
+            
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Generating...</span>`;
+
+            try {
+                const snapshot = await getDocs(serviceLogCollection);
+                let entries = [];
+                snapshot.forEach(doc => { entries.push({ id: doc.id, ...doc.data() }); });
+                
+                let filteredEntries = entries;
+
+                if (isDateRangeReport) {
+                    filteredEntries = entries.filter(entry => {
+                        const entryDate = new Date(entry.date + 'T00:00:00'); 
+                        return entryDate >= startDate && entryDate <= endDate;
+                    });
+                }
+                
+                if (filteredEntries.length === 0) {
+                    pdfErrorEl.textContent = useAllData ? 'You have no activities logged.' : 'No activities found for the selected date range.';
+                    return;
+                }
+
+                filteredEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                const doc = new jsPDF();
+                const userEmail = auth.currentUser ? auth.currentUser.email : 'N/A';
+                
+                doc.setFontSize(18);
+                doc.text('Community Service Activity Report', 14, 22);
+                doc.setFontSize(11);
+                doc.setTextColor(100);
+                doc.text(`User: ${userEmail}`, 14, 30);
+
+                let dateRangeText = isDateRangeReport 
+                    ? `Date Range: ${startDate.toLocaleDateString('en-US')} to ${endDate.toLocaleDateString('en-US')}`
+                    : 'Date Range: All Activities';
+                doc.text(dateRangeText, 14, 36);
+
+
+                const tableColumn = ["Date", "Organization", "Description", "Supervisor", "Hours"];
+                const tableRows = [];
+                let totalHours = 0;
+
+                filteredEntries.forEach(entry => {
+                    tableRows.push([
+                        new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US'),
+                        entry.organization,
+                        entry.description,
+                        entry.supervisor,
+                        entry.hours.toFixed(1)
+                    ]);
+                    totalHours += entry.hours;
+                });
+                
+                doc.autoTable({ head: [tableColumn], body: tableRows, startY: 42, theme: 'grid' });
+                
+                const finalY = doc.lastAutoTable.finalY || 50;
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Total Hours for Period: ${totalHours.toFixed(1)}`, 14, finalY + 10);
+                
+                const filename = isDateRangeReport 
+                    ? `service_log_${startDateValue}_to_${endDateValue}.pdf`
+                    : 'full_service_log_report.pdf';
+                doc.save(filename);
+
+            } catch (error) {
+                console.error("Error generating PDF: ", error);
+                pdfErrorEl.textContent = 'An error occurred while generating the PDF.';
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download PDF</span>`;
+            }
+        };
+
         // --- Event Listeners (for app functionality) ---
         document.getElementById('add-new-btn').addEventListener('click', () => openEntryModal());
         document.getElementById('cancel-btn').addEventListener('click', closeEntryModal);
+        document.getElementById('download-pdf-btn').addEventListener('click', handleDownloadPdf);
 
         entryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -440,7 +581,6 @@
             const timeIn = document.getElementById('time-in').value;
             const timeOut = document.getElementById('time-out').value;
             
-            // Basic validation for time
             if (!timeIn || !timeOut) {
                 formError.textContent = 'Please select both a start and end time.';
                 return;
@@ -483,7 +623,6 @@
                     await addDoc(serviceLogCollection, entryData);
                 }
                 closeEntryModal();
-                // After saving, immediately fetch the updated list.
                 fetchAndRenderLog(); 
             } catch (error) {
                 console.error("Error saving document: ", error);
@@ -522,7 +661,6 @@
             try {
                 await deleteDoc(doc(db, `service-hours/${userId}/logs`, entryToDeleteId));
                 closeDeleteModal();
-                // After deleting, immediately fetch the updated list.
                 fetchAndRenderLog();
             } catch (error) {
                 console.error("Error deleting document: ", error);
@@ -536,3 +674,6 @@
     </script>
 </body>
 </html>
+
+
+
