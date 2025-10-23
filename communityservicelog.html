@@ -273,6 +273,56 @@
             console.error("Error initializing Firebase:", e);
         }
 
+        // === RHS Community Service Form (Prefill Integration) ===
+        const SCHOOL_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScUspEQZflGQ-YZEnqTolHPdUjD8vmdWYYj4beibAQBuaJkNA/viewform";
+        
+        const ENTRY = {
+          studentName: "entry.1702099635",
+          grade:       "entry.1978745819",
+          org:         "entry.1466812188",
+          supervisor:  "entry.114246686",
+          email:       "entry.1852682697",
+          date:        "entry.974776126",
+          hours:       "entry.1774426487",
+          desc:        "entry.1840420920"
+        };
+        
+        // Optional: map internal grade values to the form’s expected labels.
+        // If I store “9”/“10”, keep as-is; otherwise adjust here.
+        function normalizeGrade(grade) {
+          return (grade ?? "").toString();
+        }
+        
+        // Optional: convert YYYY-MM-DD -> MM/DD/YYYY if the form expects that format.
+        // If the form accepts YYYY-MM-DD, you can just return input.
+        function toUsDate(yyyyMmDd) {
+          if (!yyyyMmDd) return "";
+          const parts = yyyyMmDd.split("-");
+          if (parts.length !== 3) return yyyyMmDd; // return as-is if not in expected format
+          const [y,m,d] = parts;
+          return `${m}/${d}/${y}`;
+        }
+
+        function buildPrefilledSchoolFormURL(entry, currentUserEmail) {
+          const url = new URL(SCHOOL_FORM_URL);
+          // Google likes ?usp=pp_url but not required; safe to include:
+          url.searchParams.set("usp", "pp_url");
+        
+          // Student name: use auth email as an identifier if I don’t collect name separately
+          if (ENTRY.studentName) url.searchParams.set(ENTRY.studentName, currentUserEmail || "");
+        
+          if (ENTRY.grade)      url.searchParams.set(ENTRY.grade, normalizeGrade(entry.grade || ""));
+          if (ENTRY.org)        url.searchParams.set(ENTRY.org, entry.organization || "");
+          if (ENTRY.supervisor) url.searchParams.set(ENTRY.supervisor, entry.supervisor || "");
+          if (ENTRY.email)      url.searchParams.set(ENTRY.email, entry.contact || "");
+          if (ENTRY.date)       url.searchParams.set(ENTRY.date, toUsDate(entry.date || entry.serviceDate || "")); // support both keys
+          if (ENTRY.hours)      url.searchParams.set(ENTRY.hours, (entry.hours ?? "").toString());
+          if (ENTRY.desc)       url.searchParams.set(ENTRY.desc, entry.description || "");
+        
+          // If the school form has extra required fields not listed above, leave them for the student to complete.
+          return url.toString();
+        }
+
         // --- UI Element References ---
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
@@ -424,6 +474,10 @@
                     <div class="w-full md:w-auto flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 md:pt-0">
                         <button data-id="${entry.id}" class="edit-btn w-full sm:w-auto text-sm bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition">Edit</button>
                         <button data-id="${entry.id}" class="delete-btn w-full sm:w-auto text-sm bg-red-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-600 transition">Delete</button>
+                        <button data-id="${entry.id}"
+                                class="submit-school-btn w-full sm:w-auto text-sm bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-indigo-700 transition">
+                          Submit to School
+                        </button>
                     </div>
                 `;
                 logList.appendChild(entryEl);
@@ -648,6 +702,25 @@
                 }
             } else if (target.classList.contains('delete-btn')) {
                 openDeleteModal(id);
+            } else if (target.classList.contains('submit-school-btn')) {
+              try {
+                const docRefPath = `service-hours/${userId}/logs`;
+                const docSnap = await getDoc(doc(db, docRefPath, id));
+                if (!docSnap.exists()) {
+                  alert("Entry not found.");
+                  return;
+                }
+                const entry = { id: docSnap.id, ...docSnap.data() };
+            
+                // If you also store a name or grade per user, you can enrich here:
+                // entry.grade = entry.grade ?? "9";
+            
+                const prefillUrl = buildPrefilledSchoolFormURL(entry, auth.currentUser?.email || "");
+                window.open(prefillUrl, "_blank", "noopener"); // open in a new tab
+              } catch (err) {
+                console.error("Error opening school form:", err);
+                alert("Could not open the school form. Please try again.");
+              }
             }
         });
 
@@ -674,6 +747,4 @@
     </script>
 </body>
 </html>
-
-
 
