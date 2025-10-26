@@ -24,8 +24,10 @@
             bottom: 0;
             background-color: rgba(0, 0, 0, 0.5);
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* <-- Change this from center to flex-start */
             z-index: 1000;
+            overflow-y: auto; /* <-- This makes the backdrop scrollable */
+            padding: 2rem 0;  /* <-- This adds space at the top and bottom */
         }
         .modal-content {
             background: white;
@@ -771,6 +773,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
