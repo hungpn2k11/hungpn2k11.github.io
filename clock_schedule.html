@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Clock & Schedule</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            font-family: "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 40%, #ffe9f3 100%);
+            color: #1e1e2f;
+        }
+
+        header {
+            text-align: center;
+            padding: 2.5rem 1rem 1rem;
+        }
+
+        h1 {
+            margin-bottom: 0.25rem;
+            font-size: clamp(2.2rem, 4vw, 3rem);
+            letter-spacing: 0.04em;
+        }
+
+        p.subtitle {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #4a4a68;
+        }
+
+        .clock-wrapper {
+            margin: 2rem auto 3rem;
+            width: min(640px, 90vw);
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 20px 35px rgba(31, 41, 55, 0.2);
+            border-radius: 24px;
+            padding: 2.5rem 1.75rem;
+            text-align: center;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .digital-clock {
+            font-size: clamp(2.75rem, 6vw, 4.5rem);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.15em;
+            color: #1b1b3a;
+            margin-bottom: 0.5rem;
+        }
+
+        .clock-subtext {
+            font-size: 1.1rem;
+            color: #566080;
+        }
+
+        main {
+            width: min(1100px, 94vw);
+            margin: 0 auto 4rem;
+        }
+
+        section {
+            margin-bottom: 3rem;
+        }
+
+        h2 {
+            margin-bottom: 1rem;
+            font-size: clamp(1.8rem, 3vw, 2.4rem);
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            overflow: hidden;
+            border-radius: 18px;
+            box-shadow: 0 14px 28px rgba(79, 114, 205, 0.18);
+        }
+
+        thead tr {
+            background: #1d3557;
+            color: #f8f9ff;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        th, td {
+            padding: 0.85rem;
+            text-align: center;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            font-size: 0.95rem;
+        }
+
+        tbody tr:nth-child(even) td {
+            background: rgba(244, 247, 255, 0.7);
+        }
+
+        tbody tr:nth-child(odd) td {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .schedule-note {
+            text-align: center;
+            font-size: 0.95rem;
+            color: #566080;
+            margin-top: 0.75rem;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1.25rem;
+            justify-content: center;
+            margin: 1.75rem auto;
+        }
+
+        .legend span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .badge {
+            width: 1.4rem;
+            height: 1.4rem;
+            border-radius: 0.45rem;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+
+        .A { background: #f94144; }
+        .B { background: #f8961e; }
+        .C { background: #f9c74f; }
+        .D { background: #90be6d; }
+        .E { background: #43aa8b; }
+        .F { background: #577590; }
+        .WIN { background: #9d4edd; }
+        .Lunch { background: #ced4da; }
+        .Lblock { background: #ff8fab; }
+
+        footer {
+            padding: 2rem 1rem 3rem;
+            text-align: center;
+            color: #48506b;
+        }
+
+        @media (max-width: 768px) {
+            th, td {
+                font-size: 0.85rem;
+                padding: 0.65rem;
+            }
+
+            .digital-clock {
+                letter-spacing: 0.08em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>North Ridge High Daily Rhythm</h1>
+        <p class="subtitle">Stay on time with the live bell schedule and lunch blocks.</p>
+    </header>
+
+    <div class="clock-wrapper">
+        <div id="clock" class="digital-clock" aria-live="polite">00:00:00</div>
+        <div class="clock-subtext">Current time (auto-updates every second)</div>
+    </div>
+
+    <main>
+        <section aria-labelledby="bell-schedule">
+            <h2 id="bell-schedule">Bell Schedule</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>7:50 &ndash; 8:40</td>
+                        <td class="A">A</td>
+                        <td class="B">B</td>
+                        <td class="A">A</td>
+                        <td class="B">B</td>
+                        <td class="A">A</td>
+                    </tr>
+                    <tr>
+                        <td>8:44 &ndash; 9:29</td>
+                        <td class="B">B</td>
+                        <td class="A">A</td>
+                        <td class="B">B</td>
+                        <td class="A">A</td>
+                        <td class="B">B</td>
+                    </tr>
+                    <tr>
+                        <td>9:31 &ndash; 10:06</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="C">C</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="C">C</td>
+                        <td class="WIN">W.I.N.</td>
+                    </tr>
+                    <tr>
+                        <td>10:10 &ndash; 10:54</td>
+                        <td class="C">C</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="C">C</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="C">C</td>
+                    </tr>
+                    <tr>
+                        <td>11:07 &ndash; 11:59</td>
+                        <td class="D">D</td>
+                        <td class="D">D</td>
+                        <td class="D">D</td>
+                        <td class="D">D</td>
+                        <td class="D">D</td>
+                    </tr>
+                    <tr>
+                        <td>12:03 &ndash; 12:57</td>
+                        <td class="E">E</td>
+                        <td class="E">E</td>
+                        <td class="E">E</td>
+                        <td class="E">E</td>
+                        <td class="E">E</td>
+                    </tr>
+                    <tr>
+                        <td>1:00 &ndash; 1:50</td>
+                        <td class="F">F</td>
+                        <td class="F">F</td>
+                        <td class="F">F</td>
+                        <td class="F">F</td>
+                        <td class="F">F</td>
+                    </tr>
+                    <tr>
+                        <td>1:50 &ndash; 2:35</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="WIN">W.I.N.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="schedule-note">Colors mirror the daily block rotation so you always know where to head next.</p>
+
+            <div class="legend" aria-label="Block legend">
+                <span><span class="badge A"></span> Block A</span>
+                <span><span class="badge B"></span> Block B</span>
+                <span><span class="badge C"></span> Block C</span>
+                <span><span class="badge D"></span> Block D</span>
+                <span><span class="badge E"></span> Block E</span>
+                <span><span class="badge F"></span> Block F</span>
+                <span><span class="badge WIN"></span> What I Need (W.I.N.)</span>
+            </div>
+        </section>
+
+        <section aria-labelledby="lunch-schedule">
+            <h2 id="lunch-schedule">Lunch Schedule</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Lunch Block</th>
+                        <th>Time</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>L1</td>
+                        <td>11:07 &ndash; 11:34 (27)</td>
+                        <td class="Lunch">Lunch</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="Lunch">Lunch</td>
+                        <td class="Lblock">L-block class</td>
+                        <td class="Lunch">Lunch</td>
+                    </tr>
+                    <tr>
+                        <td>L2</td>
+                        <td>11:36 &ndash; 12:02 (26)</td>
+                        <td class="Lblock">L-block class</td>
+                        <td class="Lunch">Lunch</td>
+                        <td class="Lblock">L-block class</td>
+                        <td class="Lunch">Lunch</td>
+                        <td class="Lblock">L-block class</td>
+                    </tr>
+                    <tr>
+                        <td>L3</td>
+                        <td>12:05 &ndash; 12:32 (27)</td>
+                        <td class="Lunch">Lunch</td>
+                        <td class="Lblock">L-block class</td>
+                        <td class="Lunch">Lunch</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="Lunch">Lunch</td>
+                    </tr>
+                    <tr>
+                        <td>L4</td>
+                        <td>12:34 &ndash; 12:59 (25)</td>
+                        <td class="Lblock">L-block class</td>
+                        <td class="WIN">W.I.N.</td>
+                        <td class="Lblock">L-block class</td>
+                        <td class="Lunch">Lunch</td>
+                        <td class="Lblock">L-block class</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        Updated in real-time so you can plan ahead and arrive prepared.
+    </footer>
+
+    <script>
+        const clock = document.getElementById("clock");
+
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, "0");
+            const minutes = String(now.getMinutes()).padStart(2, "0");
+            const seconds = String(now.getSeconds()).padStart(2, "0");
+            clock.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>
