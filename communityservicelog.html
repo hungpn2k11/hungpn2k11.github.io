@@ -228,7 +228,7 @@
         </div>
     </div>
     
-    <!-- Modals (Add/Edit, Delete) remain the same -->
+    <!-- Modals (Add/Edit, Delete) -->
     <div id="entry-modal" class="modal-backdrop">
         <div class="modal-content form-modal-content">
             <form id="entry-form" class="space-y-6">
@@ -354,6 +354,35 @@
       </div>
     </div>
     <!-- END: PROFILE MODAL -->
+
+    <!-- NEW: HELP MODAL -->
+    <div id="help-modal" class="modal-backdrop">
+      <div class="modal-content max-w-lg">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900">How to Use This App</h2>
+        <ol class="list-decimal list-inside space-y-2 text-gray-700 leading-relaxed">
+          <li><strong>Login or Sign Up</strong> with your email and password.</li>
+          <li>Click <span class="font-semibold text-indigo-600">“Add Entry”</span> to record a volunteer activity.</li>
+          <li>Enter organization name, supervisor, date, time, and a short description of what you did.</li>
+          <li>Your total hours will automatically update at the top.</li>
+          <li>You can use <span class="font-semibold text-green-600">“Download PDF”</span> or <span class="font-semibold text-blue-600">“Download CSV”</span> to optionally export a copy of your hours.</li>
+          <li>Click <span class="font-semibold text-indigo-600">“Submit to School”</span> to open the RHS form pre-filled with your entry.</li>
+          <li>Use the <span class="font-semibold text-indigo-600">Goal</span> section to track progress toward your required hours.</li>
+          <li>Use <span class="font-semibold text-gray-700">Profile</span> to set your name, grade, and school (this info is used for PDF exports!).</li>
+          <li><strong>Tip:</strong> Use the "Save current as template" button in the form to quickly fill in info for organizations you visit often.</li>
+        </ol>
+        <div class="flex justify-end mt-6">
+          <button id="help-close-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Got it!</button>
+        </div>
+      </div>
+    </div>
+    <!-- END: HELP MODAL -->
+
+    <!-- NEW: Floating Help Button -->
+    <button id="help-btn" 
+      class="fixed bottom-5 right-5 bg-yellow-500 text-white font-bold text-xl w-12 h-12 rounded-full shadow-lg hover:bg-yellow-600 transition"
+      title="Instructions">
+      ?
+    </button>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -665,6 +694,12 @@
         const profileSaveBtn = document.getElementById('profile-save-btn');
         // --- END: Profile Refs ---
 
+        // --- NEW: Help Refs ---
+        const helpBtn = document.getElementById('help-btn');
+        const helpModal = document.getElementById('help-modal');
+        const helpCloseBtn = document.getElementById('help-close-btn');
+        // --- END: Help Refs ---
+
         // REMOVED window.fillTemplate function
 
         // --- Modal Control Functions (Unchanged) ---
@@ -859,6 +894,14 @@
             } else {
               currentProfile = null;
             }
+
+            // --- NEW: Check for helpSeen ---
+            if (!currentProfile?.helpSeen) {
+              // Show the help modal if they haven't seen it
+              helpModal.style.display = 'flex';
+            }
+            // --- END: NEW ---
+
           } catch (e) {
             console.error("Error fetching profile:", e);
             currentProfile = null;
@@ -987,18 +1030,39 @@
                 filteredEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 const doc = new jsPDF();
-                const userEmail = auth.currentUser ? auth.currentUser.email : 'N/A';
                 
                 doc.setFontSize(18);
                 doc.text('Community Service Activity Report', 14, 22);
                 doc.setFontSize(11);
                 doc.setTextColor(100);
-                doc.text(`User: ${userEmail}`, 14, 30);
+
+                let startY = 30; // Starting Y position for text
+
+                // NEW: Check for Profile Info
+                if (currentProfile && currentProfile.name) {
+                    doc.text(`Student: ${currentProfile.name}`, 14, startY);
+                    startY += 6; // Move down
+                    if (currentProfile.school) {
+                        doc.text(`School: ${currentProfile.school}`, 14, startY);
+                        startY += 6;
+                    }
+                    if (currentProfile.grade) {
+                        doc.text(`Grade: ${currentProfile.grade}`, 14, startY);
+                        startY += 6;
+                    }
+                } else {
+                    // Fallback to just email
+                    const userEmail = auth.currentUser ? auth.currentUser.email : 'N/A';
+                    doc.text(`User: ${userEmail}`, 14, startY);
+                    startY += 6;
+                }
 
                 let dateRangeText = isDateRangeReport 
                     ? `Date Range: ${startDate.toLocaleDateString('en-US')} to ${endDate.toLocaleDateString('en-US')}`
                     : 'Date Range: All Activities';
-                doc.text(dateRangeText, 14, 36);
+                doc.text(dateRangeText, 14, startY);
+                
+                startY += 8; // Add a little padding before the table
 
 
                 const tableColumn = ["Date", "Organization", "Description", "Supervisor", "Hours"];
@@ -1020,7 +1084,7 @@
                     totalHours += entry.hours;
                 });
                 
-                doc.autoTable({ head: [tableColumn], body: tableRows, startY: 42, theme: 'grid' });
+                doc.autoTable({ head: [tableColumn], body: tableRows, startY: startY, theme: 'grid' });
                 
                 const finalY = doc.lastAutoTable.finalY || 50;
                 doc.setFontSize(12);
@@ -1240,6 +1304,30 @@
           }
         });
         // --- End Goal Modal Listeners ---
+
+        // --- NEW: Help Modal Listeners ---
+        helpBtn.addEventListener('click', () => {
+          helpModal.style.display = 'flex';
+        });
+
+        helpCloseBtn.addEventListener('click', async () => {
+          helpModal.style.display = 'none';
+          
+          // If this is their first time seeing it, save the flag
+          if (profileDocRef && !currentProfile?.helpSeen) {
+            try {
+              await setDoc(profileDocRef, { helpSeen: true }, { merge: true });
+              if (currentProfile) {
+                currentProfile.helpSeen = true; // Update local state
+              } else {
+                currentProfile = { helpSeen: true }; // Create profile if one didn't exist
+              }
+            } catch (e) {
+              console.error("Error setting helpSeen flag:", e);
+            }
+          }
+        });
+        // --- END: Help Modal Listeners ---
 
         entryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
