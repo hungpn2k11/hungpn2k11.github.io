@@ -129,7 +129,12 @@
                         <p id="total-hours" class="text-4xl font-bold text-indigo-600">0.0</p>
                     </div>
                      <div class="flex flex-col sm:flex-row items-center gap-4">
-                        <p id="auth-status" class="text-xs text-gray-500 text-center sm:text-right w-full sm:w-auto mb-2 sm:mb-0"></p>
+                        <!-- MODIFIED PROFILE BLOCK -->
+                        <div class="text-center sm:text-right w-full sm:w-auto mb-2 sm:mb-0">
+                            <p id="auth-status" class="text-xs text-gray-500">Logged in as...</p>
+                            <p id="entry-count" class="text-xs text-gray-600 font-medium"></p>
+                        </div>
+                        <!-- END PROFILE BLOCK -->
                         <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
                              <button id="add-new-btn" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 Add Entry
@@ -153,23 +158,64 @@
                             <label for="end-date" class="block text-sm font-medium text-gray-700">End Date</label>
                             <input type="date" id="end-date" name="end-date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
-                        <div class="sm:col-span-2 md:col-span-1">
+                        <div class="sm:col-span-2 md:col-span-1 grid grid-cols-2 gap-2">
                              <button id="download-pdf-btn" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition flex items-center justify-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                <span>Download PDF</span>
+                                <span>PDF</span>
+                            </button>
+                            <button id="download-csv-btn" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                                <span>CSV</span>
                             </button>
                         </div>
                     </div>
                     <p id="pdf-error" class="text-sm text-red-600 mt-2 h-4"></p>
                 </div>
 
+                <!-- GOAL CARD (NEW) -->
+                <div id="goal-card" class="bg-white p-6 rounded-lg shadow-md mb-8">
+                  <div class="flex items-center justify-between mb-4">
+                    <div>
+                      <p class="text-sm text-gray-500 uppercase font-semibold">Current Goal</p>
+                      <p id="goal-label" class="text-2xl font-bold text-indigo-600">No goal set</p>
+                      <p id="goal-desc" class="text-sm text-gray-500"></p>
+                    </div>
+                    <button id="set-goal-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+                      Set Goal
+                    </button>
+                  </div>
+                  <div id="goal-progress-wrapper" class="hidden">
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                      <div id="goal-progress-bar" class="bg-green-500 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p id="goal-progress-text" class="text-sm text-gray-600"></p>
+                  </div>
+                </div>
+                <!-- END GOAL CARD -->
+
                 <!-- Service Entries List -->
                 <div class="bg-white rounded-lg shadow-md">
                      <div class="p-4 border-b border-gray-200">
                         <h2 class="text-2xl font-semibold">Activity Log</h2>
                     </div>
+                    <!-- NEW: Search/Sort/Filter Bar -->
+                    <div class="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-3 md:items-center">
+                      <input id="log-search" type="text" placeholder="Search organization or description..."
+                        class="px-3 py-2 border border-gray-300 rounded-md w-full md:w-1/3">
+                      <select id="log-filter" class="px-3 py-2 border border-gray-300 rounded-md w-full md:w-40">
+                        <option value="all">All entries</option>
+                        <option value="unsubmitted">Not submitted</option>
+                      </select>
+                      <select id="log-sort" class="px-3 py-2 border border-gray-300 rounded-md w-full md:w-40">
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                      </select>
+                    </div>
+                    <!-- END: Search/Sort/Filter Bar -->
                     <div id="log-list" class="divide-y divide-gray-200">
                          <p id="loading-state" class="p-8 text-center text-gray-500">Loading your service hours...</p>
                     </div>
@@ -183,6 +229,14 @@
         <div class="modal-content form-modal-content">
             <form id="entry-form" class="space-y-6">
                 <h2 id="modal-title" class="text-2xl font-bold text-gray-900">Add Service Entry</h2>
+                
+                <!-- NEW: Quick Add Templates -->
+                <div class="flex gap-2 -mt-2">
+                  <button type="button" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200" onclick="fillTemplate('turner')">Turner Library</button>
+                  <button type="button" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200" onclick="fillTemplate('musicdance')">Musicdance.edu</button>
+                </div>
+                <!-- END: Quick Add Templates -->
+
                 <input type="hidden" id="entry-id">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -235,10 +289,27 @@
         </div>
     </div>
 
+    <!-- GOAL MODAL (NEW) -->
+    <div id="goal-modal" class="modal-backdrop">
+      <div class="modal-content" style="max-width: 420px;">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900">Set Community Service Goal</h2>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Target Hours</label>
+        <input type="number" id="goal-hours" min="1" class="w-full mb-4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Goal Description (optional)</label>
+        <input type="text" id="goal-note" class="w-full mb-4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex. 60 hrs for RHS requirement">
+        <p id="goal-error" class="text-sm text-red-600 h-4 mb-2"></p>
+        <div class="flex justify-end gap-2">
+          <button id="goal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+          <button id="goal-save-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+        </div>
+      </div>
+    </div>
+    <!-- END GOAL MODAL -->
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, getDocs, updateDoc, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, getDocs, updateDoc, deleteDoc, setLogLevel, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration and Initialization ---
         
@@ -250,6 +321,21 @@
         //
         // 2. FIRESTORE RULES: Make sure your Firestore rules are set up to allow
         //    authenticated users to access their own data.
+        //
+        //    NOTE: The "PERMISSION DENIED" error is because the rules likely only
+        //    allow access to `service-hours/{userId}/logs/{logId}`.
+        //    The code tried to access `.../meta/goal`, which was blocked.
+        //    THE FIX is to change the code to store the goal at `.../logs/--goal--`,
+        //    which *is* allowed by the existing rule.
+        //
+        //    Your rules should look something like this in Firebase:
+        //    service cloud.firestore {
+        //      match /databases/{database}/documents {
+        //        match /service-hours/{userId}/logs/{logId} { // This rule allows...
+        //          allow read, write: if request.auth != null && request.auth.uid == userId;
+        //        }
+        //      }
+        //    }
         // ===================================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyAE7XutQUkbWwEA4RzmJUsEHY-A-WOGEBM",
@@ -264,7 +350,8 @@
         let db, auth;
         let userId = null;
         let serviceLogCollection;
-        let localEntriesCache = new Map(); // <-- Add this line
+        let localEntriesCache = new Map(); // Full list of user's entries
+        let displayedEntries = []; // Filtered/sorted list that is rendered
 
         setLogLevel('debug');
 
@@ -353,6 +440,7 @@
         const signupView = document.getElementById('signup-view');
         const authStatusEl = document.getElementById('auth-status');
         const logList = document.getElementById('log-list');
+        const entryCountEl = document.getElementById('entry-count'); // NEW: For profile block
 
         // --- Auth State Listener ---
         onAuthStateChanged(auth, user => {
@@ -371,6 +459,12 @@
                 // Fetch the initial data when the user logs in.
                 fetchAndRenderLog();
 
+                // Add Goal feature
+                // We must store the goal doc inside the 'logs' collection
+                // to satisfy security rules that likely only allow access to that path.
+                goalDocRef = doc(db, `service-hours/${userId}/logs/--goal--`);
+                fetchAndRenderGoal();
+
             } else {
                 // User is signed out
                 console.log("User is signed out.");
@@ -379,6 +473,13 @@
                 authContainer.classList.remove('hidden');
                 renderLog([]); // Clear the log list
                 totalHoursEl.textContent = "0.0";
+                entryCountEl.textContent = ""; // NEW: Clear profile block
+                
+                // Reset goal state
+                currentGoal = null;
+                goalDocRef = null;
+                currentTotalHours = 0;
+                renderGoal(); // Will show "No goal set"
             }
         });
 
@@ -438,6 +539,53 @@
         let entryToDeleteId = null;
         const formError = document.getElementById('form-error');
 
+        // --- NEW: Search/Sort/Filter Refs ---
+        const logSearchInput = document.getElementById('log-search');
+        const logFilterInput = document.getElementById('log-filter');
+        const logSortInput = document.getElementById('log-sort');
+
+        // --- NEW: CSV Button Ref ---
+        const downloadCsvBtn = document.getElementById('download-csv-btn');
+
+        // --- NEW: Quick Add Template Refs ---
+        const organizationInput = document.getElementById('organization');
+        const supervisorNameInput = document.getElementById('supervisor-name');
+        const supervisorContactInput = document.getElementById('supervisor-contact');
+
+        // --- Goal Feature (NEW) ---
+        let goalDocRef = null;
+        let currentGoal = null;
+        let currentTotalHours = 0;
+        const goalCard = document.getElementById('goal-card');
+        const goalLabel = document.getElementById('goal-label');
+        const goalDesc = document.getElementById('goal-desc');
+        const goalProgressWrapper = document.getElementById('goal-progress-wrapper');
+        const goalProgressBar = document.getElementById('goal-progress-bar');
+        const goalProgressText = document.getElementById('goal-progress-text');
+        const goalModal = document.getElementById('goal-modal');
+        const goalHoursInput = document.getElementById('goal-hours');
+        const goalNoteInput = document.getElementById('goal-note');
+        const goalError = document.getElementById('goal-error');
+        const setGoalBtn = document.getElementById('set-goal-btn');
+        const goalCancelBtn = document.getElementById('goal-cancel-btn');
+        const goalSaveBtn = document.getElementById('goal-save-btn');
+        // --- End Goal Feature ---
+
+        // --- NEW: Quick Add Template Function ---
+        window.fillTemplate = (key) => {
+          if (key === 'turner') {
+            organizationInput.value = 'Turner Library';
+            supervisorNameInput.value = 'Ms. J';
+            supervisorContactInput.value = 'jbatson@randolph.ocln.org';
+          } else if (key === 'musicdance') {
+            organizationInput.value = 'Musicdance.edu';
+            supervisorNameInput.value = 'Ms. M';
+            supervisorContactInput.value = 'musicdance@email.com';
+          }
+        };
+        // --- END: Quick Add Template Function ---
+
+
         // --- Modal Control Functions (Unchanged) ---
         const openEntryModal = (entry = null) => {
             entryForm.reset();
@@ -464,18 +612,19 @@
         const closeDeleteModal = () => { entryToDeleteId = null; deleteModal.style.display = 'none'; };
         
         // --- Data Handling and Rendering ---
+        // This function NOW ONLY renders the HTML for a given list of entries.
+        // It no longer calculates totals or updates goals.
         const renderLog = (entries) => {
             logList.innerHTML = ''; // Clear current list
+            displayedEntries = entries; // Update global for PDF/CSV export
+
             if (entries.length === 0) {
-                 logList.innerHTML = `<p class="p-8 text-center text-gray-500">No service entries yet. Click "Add Entry" to get started!</p>`;
-                 totalHoursEl.textContent = "0.0";
+                 logList.innerHTML = `<p class="p-8 text-center text-gray-500">No service entries match your filters. Click "Add Entry" to get started!</p>`;
+                 // Note: totalHoursEl is NOT reset here, as it shows the total, not the filtered total.
                  return;
             }
 
-            let totalHours = 0;
             entries.forEach(entry => {
-                totalHours += parseFloat(entry.hours);
-
                 const entryEl = document.createElement('div');
                 entryEl.className = 'p-6 flex flex-col md:flex-row justify-between items-start space-y-4 md:space-y-0';
                 entryEl.innerHTML = `
@@ -493,7 +642,7 @@
                     <p class="mt-4 text-gray-600">${entry.description}</p>
                     <div class="mt-3 text-sm text-gray-500">
                       <p><strong>Supervisor:</strong> ${entry.supervisor} (${entry.contact})</p>
-                      ${entry.submittedToSchoolAt ? `<p class="text-green-600 font-medium mt-1">Submitted</p>` : ''}
+                      ${entry.submittedToSchoolAt ? `<p class="text-green-600 font-medium mt-1">Submitted on ${new Date(entry.submittedToSchoolAt).toLocaleString()}</p>` : ''}
                     </div>
                   </div>
                   <div class="w-full md:w-auto flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 md:pt-0">
@@ -506,30 +655,131 @@
                 `;
                 logList.appendChild(entryEl);
             });
-            totalHoursEl.textContent = totalHours.toFixed(1);
+            // Total hours calculation is REMOVED from here.
         };
 
+        // --- NEW: Filter/Sort Controller ---
+        // This function takes the full list from cache, applies filters, and calls renderLog
+        const refreshDisplayLog = () => {
+            const allEntries = Array.from(localEntriesCache.values());
+            
+            const searchTerm = logSearchInput.value.toLowerCase();
+            const filterVal = logFilterInput.value;
+            const sortVal = logSortInput.value;
+
+            let processedEntries = allEntries.filter(entry => {
+                // Filter 1: Search Term
+                const inOrg = entry.organization?.toLowerCase().includes(searchTerm) || false;
+                const inDesc = entry.description?.toLowerCase().includes(searchTerm) || false;
+                if (!(inOrg || inDesc)) return false;
+
+                // Filter 2: Submission Status
+                if (filterVal === 'unsubmitted' && entry.submittedToSchoolAt) {
+                    return false;
+                }
+                
+                return true; // Passes all filters
+            });
+
+            // Sort
+            processedEntries.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return sortVal === 'newest' ? dateB - dateA : dateA - dateB;
+            });
+
+            renderLog(processedEntries);
+        };
+        // --- END: Filter/Sort Controller ---
+
         // --- Firestore Data Fetching ---
+        // This function now populates cache, calculates totals, and updates header/goal.
         async function fetchAndRenderLog() {
             if (!serviceLogCollection) return;
             
-            localEntriesCache.clear(); // <-- Add this to clear old data
+            localEntriesCache.clear();
+            let totalHours = 0;
+            let entryCount = 0;
+
             try {
                 const snapshot = await getDocs(serviceLogCollection);
-                const entries = [];
                 snapshot.forEach(doc => {
-                    const entry = { id: doc.id, ...doc.data() }; // Create full entry object
-                    entries.push(entry);
-                    localEntriesCache.set(entry.id, entry); // <-- Add entry to our cache
+                    // IMPORTANT: Skip the special goal doc
+                    if (doc.id === '--goal--') {
+                        return;
+                    }
+                    const entry = { id: doc.id, ...doc.data() };
+                    localEntriesCache.set(entry.id, entry); // Add to cache
+                    
+                    totalHours += parseFloat(entry.hours) || 0;
+                    entryCount++;
                 });
-                entries.sort((a, b) => new Date(b.date) - new Date(a.date));
-                renderLog(entries);
+
+                // Update totals and header
+                totalHoursEl.textContent = totalHours.toFixed(1);
+                currentTotalHours = totalHours;
+                entryCountEl.textContent = `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'} logged`;
+
+                // Update goal progress
+                renderGoal();
+
+                // Now, filter and render the log list
+                refreshDisplayLog();
+
             } catch (error) {
                  console.error("Error fetching documents: ", error);
                  logList.innerHTML = `<p class="p-8 text-center text-red-500">Error loading data. Please check your connection and refresh.</p>`;
             }
         }
         
+        // --- Goal Functions (NEW) ---
+        async function fetchAndRenderGoal() {
+          if (!goalDocRef) return;
+          try {
+            const snap = await getDoc(goalDocRef);
+            if (snap.exists()) {
+              currentGoal = snap.data();
+            } else {
+              // NEW: Set default goal
+              currentGoal = { targetHours: 60, note: "RHS 60 Hour Requirement" };
+            }
+            renderGoal();
+          } catch (err) {
+            console.error("Error fetching goal:", err);
+          }
+        }
+
+        function renderGoal() {
+          if (!goalLabel) return; // Failsafe if elements aren't ready
+          if (!currentGoal) {
+            goalLabel.textContent = "No goal set";
+            goalDesc.textContent = "";
+            goalProgressWrapper.classList.add('hidden');
+            return;
+          }
+
+          const target = currentGoal.targetHours || 0;
+          goalLabel.textContent = `${target} hours`;
+          goalDesc.textContent = currentGoal.note || "";
+
+          const pct = target > 0 ? Math.min(100, (currentTotalHours / target) * 100) : 0;
+          goalProgressBar.style.width = pct.toFixed(0) + "%";
+          goalProgressText.textContent = `${currentTotalHours.toFixed(1)} / ${target} hrs (${pct.toFixed(0)}%)`;
+
+          // NEW: Goal Complete Alert
+          if (currentTotalHours >= target && target > 0) {
+            goalProgressText.textContent += " — Goal Complete! 🎉";
+            goalProgressBar.classList.remove('bg-green-500');
+            goalProgressBar.classList.add('bg-blue-500'); // Change color to blue for "complete"
+          } else {
+            goalProgressBar.classList.add('bg-green-500');
+            goalProgressBar.classList.remove('bg-blue-500');
+          }
+          
+          goalProgressWrapper.classList.remove('hidden');
+        }
+        // --- End Goal Functions ---
+
         // --- PDF Generation ---
         const handleDownloadPdf = async () => {
             const { jsPDF } = window.jspdf;
@@ -612,7 +862,11 @@
                 const tableRows = [];
                 let totalHours = 0;
 
+                // Use 'filteredEntries' which was already sorted and filtered
                 filteredEntries.forEach(entry => {
+                    // Skip the goal doc if it's somehow in the list
+                    if (entry.id === '--goal--') return;
+                    
                     tableRows.push([
                         new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US'),
                         entry.organization,
@@ -648,10 +902,103 @@
             }
         };
 
+        // --- NEW: CSV Generation ---
+        const handleDownloadCsv = () => {
+            // Get the currently displayed (filtered/sorted) entries
+            if (displayedEntries.length === 0) {
+                alert("No data to export.");
+                return;
+            }
+
+            const headers = ["Date", "Organization", "Hours", "Time In", "Time Out", "Supervisor", "Contact", "Description", "SubmittedAt"];
+            const csvRows = [headers.join(",")]; // Add header row
+
+            // Loop over the displayed entries
+            for (const entry of displayedEntries) {
+                const submittedAt = entry.submittedToSchoolAt ? new Date(entry.submittedToSchoolAt).toLocaleString() : "N/A";
+                // Escape commas in description by wrapping in quotes
+                const description = `"${(entry.description || '').replace(/"/g, '""')}"`;
+                
+                const row = [
+                    entry.date,
+                    entry.organization,
+                    entry.hours,
+                    entry.timeIn,
+                    entry.timeOut,
+                    entry.supervisor,
+                    entry.contact,
+                    description,
+                    submittedAt
+                ];
+                csvRows.push(row.join(","));
+            }
+
+            const csvString = csvRows.join("\n");
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-t;' });
+
+            // Create a link to download the blob
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "service_log_export.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+        // --- END: CSV Generation ---
+
         // --- Event Listeners (for app functionality) ---
         document.getElementById('add-new-btn').addEventListener('click', () => openEntryModal());
         document.getElementById('cancel-btn').addEventListener('click', closeEntryModal);
         document.getElementById('download-pdf-btn').addEventListener('click', handleDownloadPdf);
+        document.getElementById('download-csv-btn').addEventListener('click', handleDownloadCsv); // NEW
+
+        // --- NEW: Search/Sort/Filter Listeners ---
+        logSearchInput.addEventListener('input', refreshDisplayLog);
+        logFilterInput.addEventListener('change', refreshDisplayLog);
+        logSortInput.addEventListener('change', refreshDisplayLog);
+
+        // --- Goal Modal Listeners (NEW) ---
+        setGoalBtn.addEventListener('click', () => {
+          goalError.textContent = '';
+          if (currentGoal) {
+            goalHoursInput.value = currentGoal.targetHours || '';
+            goalNoteInput.value = currentGoal.note || '';
+          } else {
+            goalHoursInput.value = '';
+            goalNoteInput.value = '';
+          }
+          goalModal.style.display = 'flex';
+        });
+
+        goalCancelBtn.addEventListener('click', () => {
+          goalModal.style.display = 'none';
+        });
+
+        goalSaveBtn.addEventListener('click', async () => {
+          const hours = parseFloat(goalHoursInput.value);
+          const note = goalNoteInput.value;
+          if (isNaN(hours) || hours <= 0) {
+            goalError.textContent = "Enter a valid number of hours.";
+            return;
+          }
+          goalError.textContent = ""; // Clear error
+          try {
+            await setDoc(goalDocRef, {
+              targetHours: hours,
+              note: note || "",
+              updatedAt: new Date().toISOString()
+            });
+            currentGoal = { targetHours: hours, note: note || "" };
+            renderGoal();
+            goalModal.style.display = 'none';
+          } catch (e) {
+            console.error("Error saving goal:", e);
+            goalError.textContent = "Couldn't save goal.";
+          }
+        });
+        // --- End Goal Modal Listeners ---
 
         entryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -659,8 +1006,25 @@
             const saveBtn = document.getElementById('save-entry-btn');
             formError.textContent = ''; // Clear previous errors
 
+            const organization = document.getElementById('organization').value;
+            const date = document.getElementById('service-date').value;
             const timeIn = document.getElementById('time-in').value;
             const timeOut = document.getElementById('time-out').value;
+            const supervisor = document.getElementById('supervisor-name').value;
+            const contact = document.getElementById('supervisor-contact').value;
+            const description = document.getElementById('description').value;
+
+            // --- NEW: Time Overlap Validation ---
+            for (const entry of localEntriesCache.values()) {
+                // Don't check against self when editing, or against the goal doc
+                if (entry.id === id || entry.id === '--goal--') continue; 
+                
+                if (entry.date === date && entry.timeIn === timeIn) {
+                    formError.textContent = 'Error: An entry with this exact date and start time already exists.';
+                    return; // Block submission
+                }
+            }
+            // --- END: Time Overlap Validation ---
             
             if (!timeIn || !timeOut) {
                 formError.textContent = 'Please select both a start and end time.';
@@ -679,14 +1043,14 @@
             const calculatedHours = diffMilliseconds / 1000 / 60 / 60;
 
             const entryData = {
-                organization: document.getElementById('organization').value,
-                date: document.getElementById('service-date').value,
+                organization: organization,
+                date: date,
                 hours: parseFloat(calculatedHours.toFixed(2)), // Use calculated hours
                 timeIn: timeIn,
                 timeOut: timeOut,
-                supervisor: document.getElementById('supervisor-name').value,
-                contact: document.getElementById('supervisor-contact').value,
-                description: document.getElementById('description').value
+                supervisor: supervisor,
+                contact: contact,
+                description: description
             };
 
             if (isNaN(entryData.hours) || entryData.hours <= 0) {
@@ -705,7 +1069,7 @@
                     await addDoc(serviceLogCollection, entryData);
                 }
                 closeEntryModal();
-                fetchAndRenderLog(); 
+                fetchAndRenderLog(); // Re-fetches all, which recalculates totals and re-renders list
             } catch (error) {
                 console.error("Error saving document: ", error);
                 alert("There was an error saving your entry. Please try again.");
@@ -720,8 +1084,8 @@
              if(!target) return;
 
             const id = target.dataset.id;
-            // Add a check here. If no ID, do nothing.
-            if (!id) return;
+            // Add a check here. If no ID, or ID is goal doc, do nothing.
+            if (!id || id === '--goal--') return;
 
             if (target.classList.contains('edit-btn')) {
                 try {
@@ -742,20 +1106,6 @@
                   return;
                 }
             
-                const entry = localEntriesCache.get(id);
-                const prefillUrl = buildPrefillURL(entry);
-            
-                const newTab = window.open(prefillUrl, '_blank', 'noopener');
-                if (!newTab) {
-                  alert("Please allow pop-ups for this site to open the school form.");
-                }
-            
-                // mark submitted in Firestore
-                const submittedAt = new Date().toISOString();
-                await updateDoc(doc(serviceLogCollection, id), {
-                  submittedToSchoolAt: submittedAt
-                });
-            
                 // update local cache so we don't have to re-fetch
                 localEntriesCache.set(id, {
                   ...entry,
@@ -763,9 +1113,8 @@
                 });
             
                 // re-render with the new “Submitted on …”
-                const refreshedEntries = Array.from(localEntriesCache.values())
-                  .sort((a, b) => new Date(b.date) - new Date(a.date));
-                renderLog(refreshedEntries);
+                // We call refreshDisplayLog to respect filters
+                refreshDisplayLog();
             
               } catch (error) {
                 console.error("Error building prefill URL or saving submit time:", error);
@@ -785,7 +1134,7 @@
                 // Use serviceLogCollection for consistency
                 await deleteDoc(doc(serviceLogCollection, entryToDeleteId));
                 closeDeleteModal();
-                fetchAndRenderLog();
+                fetchAndRenderLog(); // Re-fetches all, recalculates totals, and re-renders
             } catch (error) {
                 console.error("Error deleting document: ", error);
                 alert("There was an error deleting the entry.");
