@@ -228,12 +228,26 @@
     <div id="entry-modal" class="modal-backdrop">
         <div class="modal-content form-modal-content">
             <form id="entry-form" class="space-y-6">
+                <!-- NEW: Saved Orgs Dropdown -->
+                <div class="flex flex-col md:flex-row gap-3 items-start md:items-center">
+                  <div class="w-full md:flex-1">
+                    <label class="block text-sm font-medium text-gray-700">Use saved organization</label>
+                    <select id="saved-orgs" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                      <option value="">— Select —</option>
+                    </select>
+                  </div>
+                  <button type="button" id="save-org-btn" class="mt-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-200 w-full md:w-auto flex-shrink-0">
+                    Save current as template
+                  </button>
+                </div>
+                <!-- END: Saved Orgs Dropdown -->
+
                 <h2 id="modal-title" class="text-2xl font-bold text-gray-900">Add Service Entry</h2>
                 
                 <!-- NEW: Quick Add Templates -->
                 <div class="flex gap-2 -mt-2">
-                  <button type="button" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200" onclick="fillTemplate('turner')">Turner Library</button>
-                  <button type="button" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200" onclick="fillTemplate('musicdance')">Musicdance.edu</button>
+                  <!-- REMOVED Turner Library Button -->
+                  <!-- REMOVED Musicdance.edu Button -->
                 </div>
                 <!-- END: Quick Add Templates -->
 
@@ -465,6 +479,10 @@
                 goalDocRef = doc(db, `service-hours/${userId}/logs/--goal--`);
                 fetchAndRenderGoal();
 
+                // NEW: Add Orgs feature
+                orgsDocRef = doc(db, `service-hours/${userId}/logs/--orgs--`);
+                fetchAndRenderSavedOrgs();
+
             } else {
                 // User is signed out
                 console.log("User is signed out.");
@@ -480,6 +498,11 @@
                 goalDocRef = null;
                 currentTotalHours = 0;
                 renderGoal(); // Will show "No goal set"
+
+                // NEW: Clear orgs
+                orgsDocRef = null;
+                savedOrgs = [];
+                renderSavedOrgsSelect();
             }
         });
 
@@ -552,6 +575,13 @@
         const supervisorNameInput = document.getElementById('supervisor-name');
         const supervisorContactInput = document.getElementById('supervisor-contact');
 
+        // --- NEW: Saved Orgs Refs ---
+        let orgsDocRef = null;
+        let savedOrgs = []; // array of {id, name, supervisor, contact}
+        const savedOrgsSelect = document.getElementById('saved-orgs');
+        const saveOrgBtn = document.getElementById('save-org-btn');
+        // --- END: Saved Orgs Refs ---
+
         // --- Goal Feature (NEW) ---
         let goalDocRef = null;
         let currentGoal = null;
@@ -571,20 +601,7 @@
         const goalSaveBtn = document.getElementById('goal-save-btn');
         // --- End Goal Feature ---
 
-        // --- NEW: Quick Add Template Function ---
-        window.fillTemplate = (key) => {
-          if (key === 'turner') {
-            organizationInput.value = 'Turner Library';
-            supervisorNameInput.value = 'Ms. J';
-            supervisorContactInput.value = 'jbatson@randolph.ocln.org';
-          } else if (key === 'musicdance') {
-            organizationInput.value = 'Musicdance.edu';
-            supervisorNameInput.value = 'Ms. M';
-            supervisorContactInput.value = 'musicdance@email.com';
-          }
-        };
-        // --- END: Quick Add Template Function ---
-
+        // REMOVED window.fillTemplate function
 
         // --- Modal Control Functions (Unchanged) ---
         const openEntryModal = (entry = null) => {
@@ -604,6 +621,8 @@
                 modalTitle.textContent = 'Add Service Entry';
                 entryIdInput.value = '';
             }
+            // NEW: Reset orgs dropdown
+            savedOrgsSelect.value = "";
             entryModal.style.display = 'flex';
         };
 
@@ -705,7 +724,7 @@
                 const snapshot = await getDocs(serviceLogCollection);
                 snapshot.forEach(doc => {
                     // IMPORTANT: Skip the special goal doc
-                    if (doc.id === '--goal--') {
+                    if (doc.id === '--goal--' || doc.id === '--orgs--') {
                         return;
                     }
                     const entry = { id: doc.id, ...doc.data() };
@@ -732,6 +751,40 @@
             }
         }
         
+        // --- NEW: Saved Orgs Functions ---
+        async function fetchAndRenderSavedOrgs() {
+          if (!orgsDocRef) return;
+          try {
+            const snap = await getDoc(orgsDocRef);
+            if (snap.exists()) {
+              const data = snap.data();
+              savedOrgs = Array.isArray(data.items) ? data.items : [];
+            } else {
+              savedOrgs = [];
+            }
+          } catch (e) {
+            console.error("Error loading saved orgs:", e);
+            savedOrgs = [];
+          }
+          renderSavedOrgsSelect();
+        }
+
+        function renderSavedOrgsSelect() {
+          if (!savedOrgsSelect) return;
+          savedOrgsSelect.innerHTML = `<option value="">— Select —</option>`;
+          // Sort orgs by name alphabetically for the dropdown
+          const sortedOrgs = [...savedOrgs].sort((a, b) => a.name.localeCompare(b.name));
+          sortedOrgs.forEach((org) => {
+            // Find original index to use as value
+            const originalIndex = savedOrgs.findIndex(o => o.id === org.id);
+            const opt = document.createElement('option');
+            opt.value = originalIndex; // index in UN-sorted array
+            opt.textContent = org.name;
+            savedOrgsSelect.appendChild(opt);
+          });
+        }
+        // --- END: Saved Orgs Functions ---
+
         // --- Goal Functions (NEW) ---
         async function fetchAndRenderGoal() {
           if (!goalDocRef) return;
@@ -865,7 +918,7 @@
                 // Use 'filteredEntries' which was already sorted and filtered
                 filteredEntries.forEach(entry => {
                     // Skip the goal doc if it's somehow in the list
-                    if (entry.id === '--goal--') return;
+                    if (entry.id === '--goal--' || entry.id === '--orgs--') return;
                     
                     tableRows.push([
                         new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US'),
@@ -959,6 +1012,62 @@
         logFilterInput.addEventListener('change', refreshDisplayLog);
         logSortInput.addEventListener('change', refreshDisplayLog);
 
+        // --- NEW: Saved Orgs Listeners ---
+        savedOrgsSelect.addEventListener('change', () => {
+          const idx = savedOrgsSelect.value;
+          if (idx === "") return;
+          const org = savedOrgs[idx];
+          if (!org) return;
+          document.getElementById('organization').value = org.name || "";
+          document.getElementById('supervisor-name').value = org.supervisor || "";
+          document.getElementById('supervisor-contact').value = org.contact || "";
+        });
+
+        saveOrgBtn.addEventListener('click', async () => {
+          const name = document.getElementById('organization').value.trim();
+          const supervisor = document.getElementById('supervisor-name').value.trim();
+          const contact = document.getElementById('supervisor-contact').value.trim();
+
+          if (!name) {
+            alert("Organization name is required to save.");
+            return;
+          }
+
+          const newOrg = {
+            id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+            name,
+            supervisor,
+            contact
+          };
+
+          // avoid duplicates by name
+          const existing = savedOrgs.find(o => o.name.toLowerCase() === name.toLowerCase());
+          if (existing) {
+            // update existing
+            existing.supervisor = supervisor;
+            existing.contact = contact;
+          } else {
+            savedOrgs.push(newOrg);
+          }
+
+          try {
+            await setDoc(orgsDocRef, { items: savedOrgs }, { merge: true });
+            renderSavedOrgsSelect();
+            alert("Saved organization template.");
+            
+            // Find the new/updated org and select it
+            const newIndex = savedOrgs.findIndex(o => o.name.toLowerCase() === name.toLowerCase());
+            if (newIndex > -1) {
+                savedOrgsSelect.value = newIndex;
+            }
+
+          } catch (e) {
+            console.error("Error saving org template:", e);
+            alert("Could not save template (check Firestore rules).");
+          }
+        });
+        // --- END: Saved Orgs Listeners ---
+
         // --- Goal Modal Listeners (NEW) ---
         setGoalBtn.addEventListener('click', () => {
           goalError.textContent = '';
@@ -1017,7 +1126,7 @@
             // --- NEW: Time Overlap Validation ---
             for (const entry of localEntriesCache.values()) {
                 // Don't check against self when editing, or against the goal doc
-                if (entry.id === id || entry.id === '--goal--') continue; 
+                if (entry.id === id || entry.id === '--goal--' || entry.id === '--orgs--') continue; 
                 
                 if (entry.date === date && entry.timeIn === timeIn) {
                     formError.textContent = 'Error: An entry with this exact date and start time already exists.';
@@ -1085,7 +1194,7 @@
 
             const id = target.dataset.id;
             // Add a check here. If no ID, or ID is goal doc, do nothing.
-            if (!id || id === '--goal--') return;
+            if (!id || id === '--goal--' || id === '--orgs--') return;
 
             if (target.classList.contains('edit-btn')) {
                 try {
@@ -1105,6 +1214,17 @@
                   alert("Could not find that entry. Please refresh the page and try again.");
                   return;
                 }
+                const entry = localEntriesCache.get(id);
+                const prefillUrl = buildPrefillURL(entry);
+            
+                // Open the form in a new tab
+                window.open(prefillUrl, '_blank');
+            
+                // Mark as submitted
+                const submittedAt = new Date().toISOString();
+                await updateDoc(doc(serviceLogCollection, id), {
+                  submittedToSchoolAt: submittedAt
+                });
             
                 // update local cache so we don't have to re-fetch
                 localEntriesCache.set(id, {
