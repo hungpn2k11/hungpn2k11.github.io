@@ -379,7 +379,7 @@
 
     <!-- NEW: Floating Help Button -->
     <button id="help-btn" 
-      class="fixed bottom-16 right-5 sm:bottom-5 z-50 bg-yellow-500 text-white font-bold text-xl w-12 h-12 rounded-full shadow-lg hover:bg-yellow-600 transition"
+      class="fixed bottom-5 right-5 bg-yellow-500 text-white font-bold text-xl w-12 h-12 rounded-full shadow-lg hover:bg-yellow-600 transition"
       title="Instructions">
       ?
     </button>
@@ -430,7 +430,6 @@
         let serviceLogCollection;
         let localEntriesCache = new Map(); // Full list of user's entries
         let displayedEntries = []; // Filtered/sorted list that is rendered
-        const SPECIAL_DOC_IDS = ['--goal--', '--orgs--', '--profile--']; // NEW: Centralize special IDs
 
         setLogLevel('debug');
 
@@ -821,10 +820,10 @@
             let entryCount = 0;
 
             try {
-                const snapshot = await getDocs(serviceLogG);
+                const snapshot = await getDocs(serviceLogCollection);
                 snapshot.forEach(doc => {
-                    // IMPORTANT: Skip the special docs
-                    if (SPECIAL_DOC_IDS.includes(doc.id)) {
+                    // IMPORTANT: Skip the special goal doc
+                    if (doc.id === '--goal--' || doc.id === '--orgs--' || doc.id === '--profile--') {
                         return;
                     }
                     const entry = { id: doc.id, ...doc.data() };
@@ -1072,8 +1071,8 @@
 
                 // Use 'filteredEntries' which was already sorted and filtered
                 filteredEntries.forEach(entry => {
-                    // Skip the special docs if they're somehow in the list
-                    if (SPECIAL_DOC_IDS.includes(entry.id)) return;
+                    // Skip the goal doc if it's somehow in the list
+                    if (entry.id === '--goal--' || entry.id === '--orgs--' || entry.id === '--profile--') return;
                     
                     tableRows.push([
                         new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US'),
@@ -1142,7 +1141,7 @@
             }
 
             const csvString = csvRows.join("\n");
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' }); // FIX: utf-t -> utf-8
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-t;' });
 
             // Create a link to download the blob
             const link = document.createElement("a");
@@ -1176,7 +1175,6 @@
           document.getElementById('organization').value = org.name || "";
           document.getElementById('supervisor-name').value = org.supervisor || "";
           document.getElementById('supervisor-contact').value = org.contact || "";
-          document.getElementById('description').focus(); // NEW: Auto-focus description
         });
 
         saveOrgBtn.addEventListener('click', async () => {
@@ -1347,8 +1345,8 @@
 
             // --- NEW: Time Overlap Validation ---
             for (const entry of localEntriesCache.values()) {
-                // Don't check against self when editing, or against special docs
-                if (entry.id === id || SPECIAL_DOC_IDS.includes(entry.id)) continue; 
+                // Don't check against self when editing, or against the goal doc
+                if (entry.id === id || entry.id === '--goal--' || entry.id === '--orgs--' || entry.id === '--profile--') continue; 
                 
                 if (entry.date === date && entry.timeIn === timeIn) {
                     formError.textContent = 'Error: An entry with this exact date and start time already exists.';
@@ -1415,8 +1413,8 @@
              if(!target) return;
 
             const id = target.dataset.id;
-            // Add a check here. If no ID, or ID is a special doc, do nothing.
-            if (!id || SPECIAL_DOC_IDS.includes(id)) return;
+            // Add a check here. If no ID, or ID is goal doc, do nothing.
+            if (!id || id === '--goal--' || id === '--orgs--' || id === '--profile--') return;
 
             if (target.classList.contains('edit-btn')) {
                 try {
@@ -1484,22 +1482,6 @@
                 confirmBtn.disabled = false;
                 confirmBtn.textContent = 'Delete';
             }
-        });
-        
-        // --- NEW: Modal escape listeners ---
-        // close when clicking outside
-        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-          backdrop.addEventListener('click', (e) => {
-            if (e.target === backdrop) {
-              backdrop.style.display = 'none';
-            }
-          });
-        });
-        // close on ESC
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-backdrop').forEach(b => b.style.display = 'none');
-          }
         });
         
     </script>
