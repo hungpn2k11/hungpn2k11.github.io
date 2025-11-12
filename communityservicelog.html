@@ -333,6 +333,19 @@
           return url.toString();
         }
 
+        /* This function is no longer needed, but kept just in case
+        function formatSubmittedDate(isoString) {
+          if (!isoString) return "";
+          return new Date(isoString).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          });
+        }
+        */
+
         // --- UI Element References ---
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
@@ -466,28 +479,30 @@
                 const entryEl = document.createElement('div');
                 entryEl.className = 'p-6 flex flex-col md:flex-row justify-between items-start space-y-4 md:space-y-0';
                 entryEl.innerHTML = `
-                    <div class="flex-grow">
-                        <div class="flex items-center space-x-4">
-                             <span class="flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 text-indigo-600 font-bold text-lg">${entry.hours}h</span>
-                             <div>
-                                <p class="text-lg font-semibold text-gray-900">${entry.organization}</p>
-                                <p class="text-sm text-gray-500">${new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                    ${entry.timeIn && entry.timeOut ? `<span class="font-semibold text-gray-600"> &bull; ${entry.timeIn} - ${entry.timeOut}</span>` : ''}
-                                </p>
-                             </div>
-                        </div>
-                        <p class="mt-4 text-gray-600">${entry.description}</p>
-                        <div class="mt-3 text-sm text-gray-500">
-                           <p><strong>Supervisor:</strong> ${entry.supervisor} (${entry.contact})</p>
-                        </div>
+                  <div class="flex-grow">
+                    <div class="flex items-center space-x-4">
+                      <span class="flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 text-indigo-600 font-bold text-lg">${entry.hours}h</span>
+                      <div>
+                        <p class="text-lg font-semibold text-gray-900">${entry.organization}</p>
+                        <p class="text-sm text-gray-500">
+                          ${new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          ${entry.timeIn && entry.timeOut ? `<span class="font-semibold text-gray-600"> • ${entry.timeIn} - ${entry.timeOut}</span>` : ''}
+                        </p>
+                      </div>
                     </div>
-                    <div class="w-full md:w-auto flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 md:pt-0">
-                        <button data-id="${entry.id}" class="edit-btn w-full sm:w-auto text-sm bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition">Edit</button>
-                        <button data-id="${entry.id}" class="delete-btn w-full sm:w-auto text-sm bg-red-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-600 transition">Delete</button>
-                        <button type="button" data-id="${entry.id}" class="submit-school-btn w-full sm:w-auto text-sm bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-indigo-700 transition">
-                            Submit to School
-                        </button>
+                    <p class="mt-4 text-gray-600">${entry.description}</p>
+                    <div class="mt-3 text-sm text-gray-500">
+                      <p><strong>Supervisor:</strong> ${entry.supervisor} (${entry.contact})</p>
+                      ${entry.submittedToSchoolAt ? `<p class="text-green-600 font-medium mt-1">Submitted</p>` : ''}
                     </div>
+                  </div>
+                  <div class="w-full md:w-auto flex flex-col sm:flex-row sm:justify-end gap-2 pt-4 md:pt-0">
+                    <button data-id="${entry.id}" class="edit-btn w-full sm:w-auto text-sm bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition">Edit</button>
+                    <button data-id="${entry.id}" class="delete-btn w-full sm:w-auto text-sm bg-red-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-600 transition">Delete</button>
+                    <button type="button" data-id="${entry.id}" class="submit-school-btn w-full sm:w-auto text-sm bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-indigo-700 transition">
+                      Submit to School
+                    </button>
+                  </div>
                 `;
                 logList.appendChild(entryEl);
             });
@@ -720,32 +735,42 @@
             } else if (target.classList.contains('delete-btn')) {
                 openDeleteModal(id);
             } else if (target.classList.contains('submit-school-btn')) {
-                // This is now fully synchronous!
-                try {
-                    // Get entry data SYNCHRONOUSLY from the cache
-                    if (!localEntriesCache.has(id)) {
-                        console.error("Entry not found in cache. ID:", id);
-                        alert("Could not find that entry. Please refresh the page and try again.");
-                        return; 
-                    }
-                    const entry = localEntriesCache.get(id);
-                    
-                    const prefillUrl = buildPrefillURL(entry);
-                    
-                    // Log for debugging
-                    console.log("Generated Prefill URL:", prefillUrl); 
-
-                    // Now, open the window with the FINAL URL.
-                    // This is synchronous and tied to the user's click.
-                    const newTab = window.open(prefillUrl, '_blank', 'noopener');
-                    if (!newTab) {
-                        alert("Please allow pop-ups for this site to open the school form.");
-                    }
-
-                } catch (error) {
-                    console.error("Error building prefill URL:", error);
-                    alert("An error occurred while preparing the school form.");
+              try {
+                if (!localEntriesCache.has(id)) {
+                  console.error("Entry not found in cache. ID:", id);
+                  alert("Could not find that entry. Please refresh the page and try again.");
+                  return;
                 }
+            
+                const entry = localEntriesCache.get(id);
+                const prefillUrl = buildPrefillURL(entry);
+            
+                const newTab = window.open(prefillUrl, '_blank', 'noopener');
+                if (!newTab) {
+                  alert("Please allow pop-ups for this site to open the school form.");
+                }
+            
+                // mark submitted in Firestore
+                const submittedAt = new Date().toISOString();
+                await updateDoc(doc(serviceLogCollection, id), {
+                  submittedToSchoolAt: submittedAt
+                });
+            
+                // update local cache so we don't have to re-fetch
+                localEntriesCache.set(id, {
+                  ...entry,
+                  submittedToSchoolAt: submittedAt
+                });
+            
+                // re-render with the new “Submitted on …”
+                const refreshedEntries = Array.from(localEntriesCache.values())
+                  .sort((a, b) => new Date(b.date) - new Date(a.date));
+                renderLog(refreshedEntries);
+            
+              } catch (error) {
+                console.error("Error building prefill URL or saving submit time:", error);
+                alert("An error occurred while preparing the school form.");
+              }
             }
         });
 
@@ -773,9 +798,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
