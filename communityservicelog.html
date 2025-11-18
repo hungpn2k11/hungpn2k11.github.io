@@ -85,7 +85,7 @@
                         <label for="login-password" class="block text-sm font-medium text-gray-700">Password</label>
                         <input type="password" id="login-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
-                    <p id="login-error" class="text-sm text-red-600"></p>
+                    <p id="login-error" class="text-sm text-red-600 h-4"></p>
                     <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition">Login</button>
                     <p class="text-sm text-center text-gray-600">
                         Don't have an account? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Sign up</a>
@@ -104,7 +104,7 @@
                         <label for="signup-password" class="block text-sm font-medium text-gray-700">Password (min. 6 characters)</label>
                         <input type="password" id="signup-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
-                    <p id="signup-error" class="text-sm text-red-600"></p>
+                    <p id="signup-error" class="text-sm text-red-600 h-4"></p>
                     <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition">Sign Up</button>
                     <p class="text-sm text-center text-gray-600">
                         Already have an account? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Login</a>
@@ -372,6 +372,7 @@
           <li>Click <span class="font-semibold text-indigo-600">“Submit to School”</span> to open the RHS form pre-filled with your entry.</li>
           <li>Use the <span class="font-semibold text-indigo-600">Goal</span> section to track progress toward your required hours.</li>
           <li>Use <span class="font-semibold text-gray-700">Profile</span> to set your name, grade, and school (this info is used for PDF exports!).</li>
+          <li>Use <span class="font-semibold text-gray-700">Account</span> to change your email, update your password, or delete your account.</li>
           <li><strong>Tip:</strong> Use the "Save current as template" button in the form to quickly fill in info for organizations you visit often.</li>
         </ol>
         <div class="flex justify-end mt-6">
@@ -455,10 +456,48 @@
       title="Instructions">
       ?
     </button>
-
+    
     <script type="module">
+        // ===================================================================================
+        // [IMPORTANT FIX REQUIRED for 'auth/unauthorized-domain' ERROR]
+        // ===================================================================================
+        //
+        // The error 'auth/unauthorized-domain' means your Firebase project is
+        // blocking Google Sign-In from this website's domain.
+        //
+        // YOU MUST fix this in your Firebase Console:
+        //
+        // 1. Go to your Firebase Project: https://console.firebase.google.com/
+        // 2. Select your project ("community-service-log").
+        // 3. Go to "Authentication" (in the left menu).
+        // 4. Click the "Settings" tab.
+        // 5. Find the "Authorized domains" list.
+        // 6. Click "Add domain".
+        // 7. Enter this exact domain:   scf.usercontent.goog
+        // 8. Click "Add".
+        //
+        // After you do this, refresh the app and Google Sign-In will work.
+        // This is a security setting, not a code bug.
+        //
+        // ===================================================================================
+    
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword, sendEmailVerification, sendPasswordResetEmail, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+          getAuth,
+          onAuthStateChanged,
+          createUserWithEmailAndPassword,
+          signInWithEmailAndPassword,
+          signOut,
+          EmailAuthProvider,
+          reauthenticateWithCredential,
+          updateEmail,
+          updatePassword,
+          sendEmailVerification,
+          sendPasswordResetEmail,
+          deleteUser,
+          GoogleAuthProvider,
+          signInWithPopup
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, getDocs, updateDoc, deleteDoc, setLogLevel, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration and Initialization ---
@@ -512,6 +551,8 @@
         } catch (e) {
             console.error("Error initializing Firebase:", e);
         }
+        
+        const googleProvider = new GoogleAuthProvider();
 
         // === RHS Community Service Form (Prefill Integration) ===
         const SCHOOL_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScUspEQZflGQ-YZEnqTolHPdUjD8vmdWYYj4beibAQBuaJkNA/viewform";
@@ -589,7 +630,8 @@
           const code = e?.code || '';
           console.log("Auth Error Code:", code); // Good for debugging
           if (code.includes('requires-recent-login')) return 'Please verify your password again.';
-          if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Invalid email or password.';
+          if (code.includes('invalid-credential')) return 'Invalid email or password. Please try again.'; // Changed
+          if (code.includes('wrong-password') || code.includes('user-not-found')) return 'Invalid email or password. Please try again.';
           if (code.includes('email-already-in-use')) return 'That email is already in use.';
           if (code.includes('invalid-email')) return 'Please enter a valid email.';
           if (code.includes('weak-password')) return 'Password is too weak (min. 6 characters).';
@@ -703,6 +745,39 @@
         document.getElementById('logout-btn').addEventListener('click', () => {
              signOut(auth);
         });
+
+        // --- Google Sign-In ---
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const googleSignupBtn = document.getElementById('google-signup-btn'); // if you added it
+        const loginErrorEl = document.getElementById('login-error');
+        const signupErrorEl = document.getElementById('signup-error');
+
+        async function handleGoogleSignIn(source) {
+          try {
+            loginErrorEl.textContent = '';
+            if (signupErrorEl) signupErrorEl.textContent = '';
+
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+            console.log("Google sign-in OK:", user.uid, user.email);
+            // onAuthStateChanged will fire and load the app
+          } catch (e) {
+            console.error("Google sign-in failed:", e);
+            const msg = mapAuthError(e);
+            if (source === 'login') {
+              loginErrorEl.textContent = msg;
+            } else if (signupErrorEl) {
+              signupErrorEl.textContent = msg;
+            }
+          }
+        }
+        
+        if (googleLoginBtn) {
+          googleLoginBtn.addEventListener('click', () => handleGoogleSignIn('login'));
+        }
+        if (googleSignupBtn) {
+          googleSignupBtn.addEventListener('click', () => handleGoogleSignIn('signup'));
+        }
 
         // --- Toggle between Login and Sign up views ---
         document.getElementById('show-signup').addEventListener('click', (e) => {
